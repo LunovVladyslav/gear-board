@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gearboard.midi.BleMidiPeripheral
 import com.gearboard.midi.BleMidiScanner
 import com.gearboard.ui.components.ConnectionState
 import com.gearboard.ui.components.ConnectionType
@@ -68,6 +69,7 @@ fun ConnectScreen(
     val showBleScanSheet by viewModel.showBleScanSheet.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val bleDevices by viewModel.discoveredBleDevices.collectAsStateWithLifecycle()
+    val peripheralState by viewModel.peripheralState.collectAsStateWithLifecycle()
 
     // Permission launcher for BLE
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -75,8 +77,15 @@ fun ConnectScreen(
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         viewModel.setPermissionsGranted(allGranted)
+    }
+
+    // Permission launcher specifically for advertise
+    val advertisePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
         if (allGranted) {
-            viewModel.startBleScan()
+            viewModel.startAdvertising()
         }
     }
 
@@ -174,7 +183,60 @@ fun ConnectScreen(
             ) {
                 Icon(Icons.Default.BluetoothSearching, "Scan", modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("SCAN FOR BLE MIDI", fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text("SCAN FOR BLE MIDI HARDWARE", fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            }
+        }
+
+        // === ADVERTISE TO HOST (Mac/PC/Linux) ===
+        item {
+            Spacer(Modifier.height(16.dp))
+            SectionTitle("CONNECT TO COMPUTER")
+        }
+
+        item {
+            Text(
+                "Advertise as a BLE MIDI controller so your Mac, Windows, or Linux can connect to this device.",
+                color = GearBoardColors.TextDisabled,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+        }
+
+        // Peripheral state card
+        item {
+            PeripheralStateCard(
+                state = peripheralState,
+                onStart = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        advertisePermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.BLUETOOTH_ADVERTISE,
+                                Manifest.permission.BLUETOOTH_CONNECT
+                            )
+                        )
+                    } else {
+                        viewModel.startAdvertising()
+                    }
+                },
+                onStop = { viewModel.stopAdvertising() }
+            )
+        }
+
+        // Instructions
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(GearBoardColors.Surface)
+                    .border(1.dp, GearBoardColors.BorderDefault, RoundedCornerShape(8.dp))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text("HOW TO CONNECT", color = GearBoardColors.Accent, fontSize = 11.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
+                Text("macOS: Audio MIDI Setup → Bluetooth → Connect", color = GearBoardColors.TextSecondary, fontSize = 11.sp)
+                Text("Windows: Use a BLE MIDI driver (e.g. MIDIberry)", color = GearBoardColors.TextSecondary, fontSize = 11.sp)
+                Text("Linux: Use bluez with BLE MIDI support", color = GearBoardColors.TextSecondary, fontSize = 11.sp)
             }
         }
     }
@@ -432,5 +494,111 @@ private fun BleScanContent(
         }
 
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun PeripheralStateCard(
+    state: BleMidiPeripheral.PeripheralState,
+    onStart: () -> Unit,
+    onStop: () -> Unit
+) {
+    val (bgColor, statusText, dotColor) = when (state) {
+        is BleMidiPeripheral.PeripheralState.Idle -> Triple(
+            GearBoardColors.Surface, "Ready to advertise", GearBoardColors.TextDisabled
+        )
+        is BleMidiPeripheral.PeripheralState.Advertising -> Triple(
+            GearBoardColors.Surface, "Advertising... waiting for host", GearBoardColors.Accent
+        )
+        is BleMidiPeripheral.PeripheralState.Connected -> Triple(
+            GearBoardColors.SurfaceVariant, "Connected: ${state.deviceName}", GearBoardColors.ConnectedBle
+        )
+        is BleMidiPeripheral.PeripheralState.Error -> Triple(
+            GearBoardColors.DangerBackground, state.message, GearBoardColors.DangerText
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(bgColor)
+            .border(1.dp, dotColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(dotColor)
+            )
+            Text(statusText, color = dotColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        }
+
+        when (state) {
+            is BleMidiPeripheral.PeripheralState.Idle,
+            is BleMidiPeripheral.PeripheralState.Error -> {
+                Button(
+                    onClick = onStart,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GearBoardColors.ConnectedBle,
+                        contentColor = GearBoardColors.TextPrimary
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Bluetooth, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("ADVERTISE TO HOST", fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                }
+            }
+            is BleMidiPeripheral.PeripheralState.Advertising -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = GearBoardColors.Accent,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Waiting for host...", color = GearBoardColors.TextSecondary, fontSize = 12.sp)
+                    Spacer(Modifier.weight(1f))
+                    Button(
+                        onClick = onStop,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = GearBoardColors.SurfaceElevated,
+                            contentColor = GearBoardColors.TextPrimary
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("STOP", fontSize = 12.sp, letterSpacing = 1.sp)
+                    }
+                }
+            }
+            is BleMidiPeripheral.PeripheralState.Connected -> {
+                Button(
+                    onClick = onStop,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GearBoardColors.DangerBackground,
+                        contentColor = GearBoardColors.DangerText
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.LinkOff, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("DISCONNECT HOST", fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                }
+            }
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.gearboard.ui.screens.connect
 import android.media.midi.MidiDeviceInfo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gearboard.midi.BleMidiPeripheral
 import com.gearboard.midi.BleMidiScanner
 import com.gearboard.midi.GearBoardMidiManager
 import com.gearboard.ui.components.ConnectionState
@@ -10,17 +11,16 @@ import com.gearboard.ui.components.ConnectionType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class ConnectViewModel @Inject constructor(
     private val midiManager: GearBoardMidiManager,
-    private val bleScanner: BleMidiScanner
+    private val bleScanner: BleMidiScanner,
+    private val blePeripheral: BleMidiPeripheral
 ) : ViewModel() {
 
     // Connection state
@@ -29,9 +29,12 @@ class ConnectViewModel @Inject constructor(
     // Available USB MIDI devices
     val availableDevices: StateFlow<List<MidiDeviceInfo>> = midiManager.availableDevices
 
-    // BLE scan state
+    // BLE scan state (Central mode — for connecting to BLE MIDI hardware)
     val isScanning: StateFlow<Boolean> = bleScanner.isScanning
     val discoveredBleDevices: StateFlow<List<BleMidiScanner.BleDevice>> = bleScanner.discoveredDevices
+
+    // BLE peripheral state (Peripheral mode — for Mac/PC to connect to us)
+    val peripheralState: StateFlow<BleMidiPeripheral.PeripheralState> = blePeripheral.state
 
     // UI state
     private val _showBleScanSheet = MutableStateFlow(false)
@@ -42,9 +45,9 @@ class ConnectViewModel @Inject constructor(
 
     val isBluetoothAvailable: Boolean get() = bleScanner.isBluetoothAvailable
     val isBluetoothEnabled: Boolean get() = bleScanner.isBluetoothEnabled
+    val isPeripheralSupported: Boolean get() = blePeripheral.isPeripheralSupported
 
     init {
-        // Refresh USB device list on init
         midiManager.refreshDeviceList()
     }
 
@@ -52,44 +55,29 @@ class ConnectViewModel @Inject constructor(
         _permissionsGranted.value = granted
     }
 
-    /**
-     * Connect to a USB MIDI device.
-     */
+    // --- USB ---
     fun connectUsb(deviceInfo: MidiDeviceInfo) {
         midiManager.connectToDevice(deviceInfo, ConnectionType.USB)
     }
 
-    /**
-     * Start BLE scan and show bottom sheet.
-     */
+    // --- BLE Central (scan for MIDI hardware) ---
     fun startBleScan() {
         _showBleScanSheet.value = true
         bleScanner.startScan()
-
-        // Auto-stop scan after 15 seconds
         viewModelScope.launch {
             delay(15_000)
-            if (bleScanner.isScanning.value) {
-                bleScanner.stopScan()
-            }
+            if (bleScanner.isScanning.value) bleScanner.stopScan()
         }
     }
 
-    /**
-     * Stop BLE scan and dismiss bottom sheet.
-     */
     fun stopBleScan() {
         bleScanner.stopScan()
         _showBleScanSheet.value = false
     }
 
-    /**
-     * Connect to a discovered BLE MIDI device.
-     */
     fun connectBle(device: BleMidiScanner.BleDevice) {
         bleScanner.stopScan()
         _showBleScanSheet.value = false
-
         bleScanner.openBleDevice(device.address) { deviceInfo ->
             if (deviceInfo != null) {
                 midiManager.connectToDevice(deviceInfo, ConnectionType.BLUETOOTH)
@@ -97,16 +85,20 @@ class ConnectViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Disconnect current connection.
-     */
+    // --- BLE Peripheral (advertise to Mac/PC/Linux) ---
+    fun startAdvertising() {
+        blePeripheral.startAdvertising()
+    }
+
+    fun stopAdvertising() {
+        blePeripheral.stopAdvertising()
+    }
+
+    // --- Common ---
     fun disconnect() {
         midiManager.disconnect()
     }
 
-    /**
-     * Refresh USB device list.
-     */
     fun refreshDevices() {
         midiManager.refreshDeviceList()
     }

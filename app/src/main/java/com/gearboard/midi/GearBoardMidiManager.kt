@@ -30,7 +30,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class GearBoardMidiManager @Inject constructor(
-    private val midiManager: MidiManager
+    private val midiManager: MidiManager,
+    private val blePeripheral: BleMidiPeripheral
 ) {
     companion object {
         private const val TAG = "GearBoardMidi"
@@ -81,6 +82,11 @@ class GearBoardMidiManager @Inject constructor(
         @Suppress("DEPRECATION")
         midiManager.registerDeviceCallback(deviceCallback, handler)
         refreshDeviceList()
+
+        // Wire BLE peripheral incoming data to our MIDI event stream
+        blePeripheral.onMidiDataReceived = { data ->
+            parseMidiBytes(data, MidiDirection.INCOMING)
+        }
     }
 
     /**
@@ -203,10 +209,16 @@ class GearBoardMidiManager @Inject constructor(
      * Send raw MIDI bytes to the connected device.
      */
     private fun sendMidiData(data: ByteArray) {
+        // Send via USB/BLE MIDI device connection
         try {
             activeInputPort?.send(data, 0, data.size)
         } catch (e: Exception) {
-            Log.e(TAG, "Error sending MIDI data", e)
+            Log.e(TAG, "Error sending MIDI data via device port", e)
+        }
+
+        // Also send via BLE peripheral if a host (Mac/PC) is connected
+        if (blePeripheral.state.value is BleMidiPeripheral.PeripheralState.Connected) {
+            blePeripheral.sendMidiData(data)
         }
     }
 
@@ -296,6 +308,36 @@ class GearBoardMidiManager @Inject constructor(
 
             event?.let { _midiEvents.tryEmit(it) }
         }
+    }
+
+    /**
+     * Parse raw MIDI bytes and emit events.
+     * Used by BleMidiPeripheral for incoming data from the host.
+     */
+    private fun parseMidiBytes(data: ByteArray, direction: MidiDirection) {
+        if (data.isEmpty()) return
+        val statusByte = data[0].toInt() and 0xFF
+        val channel = statusByte and 0x0F
+        val messageType = statusByte and 0xF0
+        val d1 = if (data.size >= 2) data[1].toInt() and 0x7F else 0
+        val d2 = if (data.size >= 3) data[2].toInt() and 0x7F else 0
+
+        val type = when (messageType) {
+            0x90 -> MidiEventType.NOTE_ON
+            0x80 -> MidiEventType.NOTE_OFF
+            0xB0 -> MidiEventType.CONTROL_CHANGE
+            0xC0 -> MidiEventType.PROGRAM_CHANGE
+            0xE0 -> MidiEventType.PITCH_BEND
+            else -> MidiEventType.UNKNOWN
+        }
+
+        _midiEvents.tryEmit(
+            MidiEvent(
+                type = type, channel = channel,
+                data1 = d1, data2 = d2,
+                direction = direction, rawBytes = data
+            )
+        )
     }
 
     /**

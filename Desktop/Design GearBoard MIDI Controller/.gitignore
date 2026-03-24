@@ -1,0 +1,26 @@
+# Built files
+/build/
+/app/build/
+*.apk
+*.aab
+
+# Gradle
+/.gradle/
+local.properties
+gradle-wrapper.jar
+
+# IDE
+/.idea/
+*.iml
+.DS_Store
+
+# Kotlin
+*.kotlin_module
+
+# Frontend (reference only)
+/frontend/
+/frontend/node_modules/
+
+# Misc
+*.log
+*.tmp

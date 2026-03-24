@@ -8,13 +8,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
+import com.gearboard.ui.theme.GearBoardTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -23,25 +22,23 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            // Minimal placeholder — GearBoardTheme will be added in Phase 2
-            Scaffold(
-                modifier = Modifier.fillMaxSize(),
-                containerColor = Color(0xFF0D0D0D)
-            ) { innerPadding ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .background(Color(0xFF0D0D0D)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "GEARBOARD",
-                        color = Color(0xFFE8A020),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 4.sp
-                    )
+            GearBoardTheme {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    containerColor = MaterialTheme.colorScheme.background
+                ) { innerPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "GEARBOARD",
+                            style = MaterialTheme.typography.headlineLarge
+                        )
+                    }
                 }
             }
         }

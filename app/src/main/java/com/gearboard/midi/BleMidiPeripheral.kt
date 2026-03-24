@@ -109,11 +109,13 @@ class BleMidiPeripheral @Inject constructor(
             .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
             .build()
 
+        // Main advertisement: service UUID only (device name would exceed 31-byte limit)
         val data = AdvertiseData.Builder()
-            .setIncludeDeviceName(true)
+            .setIncludeDeviceName(false)
             .addServiceUuid(ParcelUuid(MIDI_SERVICE_UUID))
             .build()
 
+        // Scan response: device name (sent when host actively scans)
         val scanResponse = AdvertiseData.Builder()
             .setIncludeDeviceName(true)
             .build()

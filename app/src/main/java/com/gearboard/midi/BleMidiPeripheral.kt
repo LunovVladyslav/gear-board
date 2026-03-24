@@ -259,20 +259,21 @@ class BleMidiPeripheral @Inject constructor(
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
+                    // Store the device but DON'T stop advertising yet.
+                    // Wait for CCCD write (notification enable) which is the
+                    // real BLE MIDI handshake from Audio MIDI Setup / host.
                     connectedDevice = device
                     val name = device.name ?: device.address
-                    _state.value = PeripheralState.Connected(name)
-                    Log.d(TAG, "Host connected: $name")
-                    // Stop advertising once connected
-                    try {
-                        advertiser?.stopAdvertising(advertiseCallback)
-                    } catch (_: Exception) {}
+                    Log.d(TAG, "BLE device connected: $name (waiting for MIDI handshake)")
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     connectedDevice = null
                     notificationsEnabled = false
-                    _state.value = PeripheralState.Idle
-                    Log.d(TAG, "Host disconnected")
+                    _state.value = if (_state.value is PeripheralState.Connected)
+                        PeripheralState.Idle
+                    else
+                        _state.value // Keep current state (e.g. Advertising)
+                    Log.d(TAG, "BLE device disconnected")
                 }
             }
         }
@@ -313,6 +314,17 @@ class BleMidiPeripheral @Inject constructor(
                     BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                 ) == true
                 Log.d(TAG, "Notifications ${if (notificationsEnabled) "enabled" else "disabled"}")
+
+                // THIS is the real BLE MIDI handshake — host subscribed to MIDI data
+                if (notificationsEnabled && connectedDevice != null) {
+                    val name = connectedDevice?.name ?: connectedDevice?.address ?: "Host"
+                    _state.value = PeripheralState.Connected(name)
+                    Log.d(TAG, "MIDI host connected: $name")
+                    // Now we can stop advertising
+                    try {
+                        advertiser?.stopAdvertising(advertiseCallback)
+                    } catch (_: Exception) {}
+                }
 
                 if (responseNeeded) {
                     gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)

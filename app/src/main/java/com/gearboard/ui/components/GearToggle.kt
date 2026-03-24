@@ -66,12 +66,6 @@ private fun StompToggle(
     modifier: Modifier,
     view: android.view.View
 ) {
-    val bgColor by animateColorAsState(
-        targetValue = if (enabled) GearBoardColors.Accent else GearBoardColors.SurfaceElevated,
-        animationSpec = tween(150),
-        label = "stompBg"
-    )
-
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,

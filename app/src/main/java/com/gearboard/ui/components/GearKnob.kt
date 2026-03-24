@@ -120,7 +120,6 @@ fun GearKnob(
             val centerY = size.toPx() / 2f
             val outerRadius = size.toPx() / 2f
             val innerRadius = outerRadius * 0.75f
-            val indicatorRadius = outerRadius * 0.6f
 
             // --- Outer ring (body) ---
             drawCircle(

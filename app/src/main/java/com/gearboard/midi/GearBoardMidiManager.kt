@@ -78,6 +78,7 @@ class GearBoardMidiManager @Inject constructor(
 
     init {
         // Register for device hotplug events
+        @Suppress("DEPRECATION")
         midiManager.registerDeviceCallback(deviceCallback, handler)
         refreshDeviceList()
     }
@@ -86,6 +87,7 @@ class GearBoardMidiManager @Inject constructor(
      * Refresh the list of available MIDI devices.
      */
     fun refreshDeviceList() {
+        @Suppress("DEPRECATION")
         val devices = midiManager.devices?.toList() ?: emptyList()
         _availableDevices.value = devices
         Log.d(TAG, "Found ${devices.size} MIDI devices")

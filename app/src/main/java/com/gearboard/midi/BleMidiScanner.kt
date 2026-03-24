@@ -150,7 +150,7 @@ class BleMidiScanner @Inject constructor(
     val isBluetoothAvailable: Boolean
         get() = bluetoothAdapter != null
 
-    @SuppressLint("MissingPermission")
     val isBluetoothEnabled: Boolean
+        @SuppressLint("MissingPermission")
         get() = bluetoothAdapter?.isEnabled == true
 }

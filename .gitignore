@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+*.zip
+gradlew.bat
+frontend/node_modules/
+frontend/.vite/
+/frontend/

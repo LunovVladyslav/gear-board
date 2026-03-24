@@ -37,7 +37,7 @@ import javax.inject.Singleton
  * - Characteristic UUID: 7772E5DB-3868-4112-A1A9-F2669D106BF3
  *
  * The MIDI characteristic uses BLE MIDI packet format:
- * [header/timestamp_high] [timestamp_low] [midi_status] [data1] [data2]
+ * header/timestamp_high, timestamp_low, midi_status, data1, data2
  */
 @Singleton
 class BleMidiPeripheral @Inject constructor(
@@ -152,7 +152,7 @@ class BleMidiPeripheral @Inject constructor(
      * Send MIDI data to the connected host (Mac/PC) via BLE notification.
      *
      * Wraps raw MIDI bytes in BLE MIDI packet format:
-     * [header] [timestamp] [midi_bytes...]
+     * header, timestamp, midi_bytes
      */
     @SuppressLint("MissingPermission")
     fun sendMidiData(midiBytes: ByteArray) {
@@ -334,7 +334,7 @@ class BleMidiPeripheral @Inject constructor(
 
     /**
      * Parse a BLE MIDI packet from the host.
-     * Format: [header] [timestamp] [midi_status] [data1] [data2] ...
+     * Format: header, timestamp, midi_status, data1, data2 ...
      */
     private fun parseBLeMidiPacket(packet: ByteArray) {
         if (packet.size < 3) return

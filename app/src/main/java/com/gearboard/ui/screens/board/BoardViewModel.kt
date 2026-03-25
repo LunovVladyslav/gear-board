@@ -14,11 +14,13 @@ import com.gearboard.domain.model.TapButton
 import com.gearboard.domain.model.ToggleButton
 import com.gearboard.midi.GearBoardMidiManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -69,6 +71,17 @@ class BoardViewModel @Inject constructor(
         boardRepository.removePedal(pedalId)
     }
 
+    /**
+     * Send a momentary CC press like a real footswitch: 127 (press) then 0 (release).
+     */
+    private fun sendMomentaryCC(ccNumber: Int) {
+        midiManager.sendControlChange(ccNumber, 127)
+        viewModelScope.launch {
+            delay(50)
+            midiManager.sendControlChange(ccNumber, 0)
+        }
+    }
+
     fun togglePedalEnabled(pedalId: String) {
         val state = boardRepository.getCurrentState()
         state.pedals.find { it.id == pedalId }?.let { pedal ->
@@ -78,7 +91,7 @@ class BoardViewModel @Inject constructor(
             val pedalIndex = state.pedals.indexOf(pedal)
             val ccNum = 80 + pedalIndex
             if (ccNum in 80..83) {
-                midiManager.sendControlChange(ccNum, if (newEnabled) 127 else 0)
+                sendMomentaryCC(ccNum)
             }
         }
     }
@@ -108,7 +121,7 @@ class BoardViewModel @Inject constructor(
                 if (btn.id == buttonId) {
                     val newBtn = btn.copy(enabled = !btn.enabled)
                     if (newBtn.ccNumber >= 0) {
-                        midiManager.sendControlChange(newBtn.ccNumber, if (newBtn.enabled) 127 else 0)
+                        sendMomentaryCC(newBtn.ccNumber)
                     }
                     newBtn
                 } else btn
@@ -123,7 +136,7 @@ class BoardViewModel @Inject constructor(
         val newEnabled = !amp.enabled
         boardRepository.updateAmp(amp.copy(enabled = newEnabled))
         // General Purpose 1 (CC 16) for amp toggle
-        midiManager.sendControlChange(16, if (newEnabled) 127 else 0)
+        sendMomentaryCC(16)
     }
 
     fun updateAmpControl(controlId: String, value: Float) {
@@ -146,7 +159,7 @@ class BoardViewModel @Inject constructor(
         val newEnabled = !cab.enabled
         boardRepository.updateCabinet(cab.copy(enabled = newEnabled))
         // General Purpose 2 (CC 17) for cab toggle
-        midiManager.sendControlChange(17, if (newEnabled) 127 else 0)
+        sendMomentaryCC(17)
     }
 
     fun updateCabControl(controlId: String, value: Float) {
@@ -182,7 +195,7 @@ class BoardViewModel @Inject constructor(
             val effectIndex = state.effects.indexOf(effect)
             val ccNum = 18 + effectIndex
             if (ccNum in 18..19) {
-                midiManager.sendControlChange(ccNum, if (newEnabled) 127 else 0)
+                sendMomentaryCC(ccNum)
             }
         }
     }

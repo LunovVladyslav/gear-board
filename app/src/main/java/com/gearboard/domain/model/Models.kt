@@ -37,7 +37,7 @@ data class Pedal(
     val id: String = java.util.UUID.randomUUID().toString(),
     val name: String,
     val type: String = "Custom",        // e.g. "Overdrive", "Delay", "Reverb"
-    val enabled: Boolean = true,
+    val enabled: Boolean = false,
     val controls: List<ControlParam> = emptyList(),
     val toggleButtons: List<ToggleButton> = emptyList(),
     val tapButtons: List<TapButton> = emptyList()

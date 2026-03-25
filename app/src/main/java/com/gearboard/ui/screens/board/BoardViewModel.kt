@@ -74,11 +74,11 @@ class BoardViewModel @Inject constructor(
         state.pedals.find { it.id == pedalId }?.let { pedal ->
             val newEnabled = !pedal.enabled
             boardRepository.updatePedal(pedal.copy(enabled = newEnabled))
-            // Always send CC 127 (trigger) — plugins toggle their own state on CC 127
+            // Send CC: ON=127, OFF=0 (CC 104-109 = unreserved range for pedal toggles)
             val pedalIndex = state.pedals.indexOf(pedal)
-            val ccNum = 82 + pedalIndex
+            val ccNum = 104 + pedalIndex
             if (ccNum in 0..127) {
-                midiManager.sendControlChange(ccNum, 127)
+                midiManager.sendControlChange(ccNum, if (newEnabled) 127 else 0)
             }
         }
     }
@@ -108,7 +108,7 @@ class BoardViewModel @Inject constructor(
                 if (btn.id == buttonId) {
                     val newBtn = btn.copy(enabled = !btn.enabled)
                     if (newBtn.ccNumber >= 0) {
-                        midiManager.sendControlChange(newBtn.ccNumber, 127)
+                        midiManager.sendControlChange(newBtn.ccNumber, if (newBtn.enabled) 127 else 0)
                     }
                     newBtn
                 } else btn
@@ -122,8 +122,8 @@ class BoardViewModel @Inject constructor(
         val amp = boardRepository.getCurrentState().amp
         val newEnabled = !amp.enabled
         boardRepository.updateAmp(amp.copy(enabled = newEnabled))
-        // Always send CC 127 (trigger) for amp toggle
-        midiManager.sendControlChange(80, 127)
+        // Send CC 102: ON=127, OFF=0
+        midiManager.sendControlChange(102, if (newEnabled) 127 else 0)
     }
 
     fun updateAmpControl(controlId: String, value: Float) {
@@ -145,8 +145,8 @@ class BoardViewModel @Inject constructor(
         val cab = boardRepository.getCurrentState().cabinet
         val newEnabled = !cab.enabled
         boardRepository.updateCabinet(cab.copy(enabled = newEnabled))
-        // Always send CC 127 (trigger) for cab toggle
-        midiManager.sendControlChange(81, 127)
+        // Send CC 103: ON=127, OFF=0
+        midiManager.sendControlChange(103, if (newEnabled) 127 else 0)
     }
 
     fun updateCabControl(controlId: String, value: Float) {
@@ -178,11 +178,11 @@ class BoardViewModel @Inject constructor(
         state.effects.find { it.id == effectId }?.let { effect ->
             val newEnabled = !effect.enabled
             boardRepository.updateEffect(effect.copy(enabled = newEnabled))
-            // Always send CC 127 (trigger) for effect toggle
+            // Send CC: ON=127, OFF=0 (CC 110-115 = unreserved range for effect toggles)
             val effectIndex = state.effects.indexOf(effect)
-            val ccNum = 90 + effectIndex
+            val ccNum = 110 + effectIndex
             if (ccNum in 0..127) {
-                midiManager.sendControlChange(ccNum, 127)
+                midiManager.sendControlChange(ccNum, if (newEnabled) 127 else 0)
             }
         }
     }

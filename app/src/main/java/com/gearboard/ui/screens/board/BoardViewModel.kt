@@ -74,10 +74,10 @@ class BoardViewModel @Inject constructor(
         state.pedals.find { it.id == pedalId }?.let { pedal ->
             val newEnabled = !pedal.enabled
             boardRepository.updatePedal(pedal.copy(enabled = newEnabled))
-            // Send CC: ON=127, OFF=0 (CC 104-109 = unreserved range for pedal toggles)
+            // General Purpose 5-8 for pedal toggles (CC 80-83)
             val pedalIndex = state.pedals.indexOf(pedal)
-            val ccNum = 104 + pedalIndex
-            if (ccNum in 0..127) {
+            val ccNum = 80 + pedalIndex
+            if (ccNum in 80..83) {
                 midiManager.sendControlChange(ccNum, if (newEnabled) 127 else 0)
             }
         }
@@ -122,8 +122,8 @@ class BoardViewModel @Inject constructor(
         val amp = boardRepository.getCurrentState().amp
         val newEnabled = !amp.enabled
         boardRepository.updateAmp(amp.copy(enabled = newEnabled))
-        // Send CC 102: ON=127, OFF=0
-        midiManager.sendControlChange(102, if (newEnabled) 127 else 0)
+        // General Purpose 1 (CC 16) for amp toggle
+        midiManager.sendControlChange(16, if (newEnabled) 127 else 0)
     }
 
     fun updateAmpControl(controlId: String, value: Float) {
@@ -145,8 +145,8 @@ class BoardViewModel @Inject constructor(
         val cab = boardRepository.getCurrentState().cabinet
         val newEnabled = !cab.enabled
         boardRepository.updateCabinet(cab.copy(enabled = newEnabled))
-        // Send CC 103: ON=127, OFF=0
-        midiManager.sendControlChange(103, if (newEnabled) 127 else 0)
+        // General Purpose 2 (CC 17) for cab toggle
+        midiManager.sendControlChange(17, if (newEnabled) 127 else 0)
     }
 
     fun updateCabControl(controlId: String, value: Float) {
@@ -178,10 +178,10 @@ class BoardViewModel @Inject constructor(
         state.effects.find { it.id == effectId }?.let { effect ->
             val newEnabled = !effect.enabled
             boardRepository.updateEffect(effect.copy(enabled = newEnabled))
-            // Send CC: ON=127, OFF=0 (CC 110-115 = unreserved range for effect toggles)
+            // General Purpose 3-4 (CC 18-19) for effect toggles
             val effectIndex = state.effects.indexOf(effect)
-            val ccNum = 110 + effectIndex
-            if (ccNum in 0..127) {
+            val ccNum = 18 + effectIndex
+            if (ccNum in 18..19) {
                 midiManager.sendControlChange(ccNum, if (newEnabled) 127 else 0)
             }
         }

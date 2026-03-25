@@ -38,7 +38,7 @@ private val pedalTemplates = listOf(
             ControlParam("od_tone", "Tone", ccNumber = 2),
             ControlParam("od_level", "Level", ccNumber = 3)
         ),
-        toggleButtons = listOf(ToggleButton("od_boost", "Boost", ccNumber = 116))
+        toggleButtons = listOf(ToggleButton("od_boost", "Boost", ccNumber = 19))
     ),
     Pedal(
         name = "Delay",

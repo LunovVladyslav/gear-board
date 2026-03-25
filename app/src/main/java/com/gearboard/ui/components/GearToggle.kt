@@ -75,6 +75,10 @@ private fun StompToggle(
             modifier = Modifier
                 .size(GearBoardDimensions.ToggleStompSize)
                 .clip(RoundedCornerShape(GearBoardDimensions.RadiusM))
+                .clickable {
+                    onToggle()
+                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                }
                 .background(
                     brush = Brush.verticalGradient(
                         colors = if (enabled) {
@@ -83,18 +87,7 @@ private fun StompToggle(
                             listOf(GearBoardColors.SurfaceElevated, GearBoardColors.Surface)
                         }
                     )
-                )
-                .then(
-                    if (enabled) {
-                        Modifier.shadow(8.dp, RoundedCornerShape(GearBoardDimensions.RadiusM), ambientColor = GearBoardColors.AccentGlow, spotColor = GearBoardColors.AccentGlow)
-                    } else {
-                        Modifier
-                    }
-                )
-                .clickable {
-                    onToggle()
-                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                },
+                ),
             contentAlignment = Alignment.Center
         ) {
             if (enabled) {

@@ -158,7 +158,9 @@ class BleMidiPeripheral @Inject constructor(
      */
     @SuppressLint("MissingPermission")
     fun sendMidiData(midiBytes: ByteArray) {
+        Log.d(TAG, "sendMidiData: notif=$notificationsEnabled device=$connectedDevice char=${midiCharacteristic != null}")
         if (!notificationsEnabled || connectedDevice == null || midiCharacteristic == null) {
+            Log.w(TAG, "sendMidiData: blocked — notif=$notificationsEnabled device=${connectedDevice != null} char=${midiCharacteristic != null}")
             return
         }
 
@@ -173,9 +175,19 @@ class BleMidiPeripheral @Inject constructor(
         System.arraycopy(midiBytes, 0, packet, 2, midiBytes.size)
 
         midiCharacteristic?.let { char ->
-            char.value = packet
             try {
-                gattServer?.notifyCharacteristicChanged(connectedDevice, char, false)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    // API 33+ uses new signature
+                    val result = gattServer?.notifyCharacteristicChanged(
+                        connectedDevice!!, char, false, packet
+                    )
+                    Log.d(TAG, "sendMidiData (API33+): result=$result bytes=${packet.size}")
+                } else {
+                    // Legacy API
+                    char.value = packet
+                    val sent = gattServer?.notifyCharacteristicChanged(connectedDevice, char, false)
+                    Log.d(TAG, "sendMidiData (legacy): sent=$sent bytes=${packet.size}")
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending MIDI notification", e)
             }

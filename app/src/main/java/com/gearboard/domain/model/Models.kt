@@ -49,12 +49,12 @@ data class AmpSettings(
     val model: String = "Clean",
     val channel: String = "A",
     val controls: List<ControlParam> = listOf(
-        ControlParam("gain", "Gain"),
-        ControlParam("bass", "Bass"),
-        ControlParam("mid", "Mid"),
-        ControlParam("treble", "Treble"),
-        ControlParam("presence", "Presence"),
-        ControlParam("volume", "Volume")
+        ControlParam("gain", "Gain", ccNumber = 21),
+        ControlParam("bass", "Bass", ccNumber = 22),
+        ControlParam("mid", "Mid", ccNumber = 23),
+        ControlParam("treble", "Treble", ccNumber = 24),
+        ControlParam("presence", "Presence", ccNumber = 25),
+        ControlParam("volume", "Volume", ccNumber = 26)
     )
 )
 
@@ -64,9 +64,9 @@ data class CabinetSettings(
     val model: String = "4x12",
     val micPosition: String = "Center",
     val controls: List<ControlParam> = listOf(
-        ControlParam("mic_distance", "Mic Dist", unit = "cm"),
-        ControlParam("low_cut", "Low Cut", unit = "Hz"),
-        ControlParam("high_cut", "High Cut", unit = "Hz")
+        ControlParam("mic_distance", "Mic Dist", unit = "cm", ccNumber = 27),
+        ControlParam("low_cut", "Low Cut", unit = "Hz", ccNumber = 28),
+        ControlParam("high_cut", "High Cut", unit = "Hz", ccNumber = 29)
     )
 )
 

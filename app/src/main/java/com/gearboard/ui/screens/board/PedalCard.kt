@@ -107,14 +107,25 @@ fun PedalCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 pedal.controls.forEach { control ->
-                    GearKnob(
-                        value = control.value,
-                        onValueChange = { onControlChange(control.id, it) },
-                        label = control.name,
-                        displayValue = formatValue(control),
-                        enabled = pedal.enabled,
-                        size = knobSize
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        GearKnob(
+                            value = control.value,
+                            onValueChange = { onControlChange(control.id, it) },
+                            label = control.name,
+                            displayValue = formatValue(control),
+                            enabled = pedal.enabled,
+                            size = knobSize
+                        )
+                        // Show CC number
+                        if (control.ccNumber >= 0) {
+                            Text(
+                                text = "CC ${control.ccNumber}",
+                                color = GearBoardColors.Accent.copy(alpha = 0.5f),
+                                fontSize = 8.sp,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -126,13 +137,23 @@ fun PedalCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 pedal.toggleButtons.forEach { btn ->
-                    GearToggle(
-                        label = btn.label,
-                        enabled = btn.enabled,
-                        onToggle = { onToggleButton(btn.id) },
-                        variant = ToggleVariant.STOMP,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        GearToggle(
+                            label = btn.label,
+                            enabled = btn.enabled,
+                            onToggle = { onToggleButton(btn.id) },
+                            variant = ToggleVariant.STOMP,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (btn.ccNumber >= 0) {
+                            Text(
+                                text = "CC ${btn.ccNumber}",
+                                color = GearBoardColors.Accent.copy(alpha = 0.5f),
+                                fontSize = 8.sp,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
                 }
             }
         }

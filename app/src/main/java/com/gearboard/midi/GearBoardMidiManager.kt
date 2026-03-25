@@ -166,6 +166,7 @@ class GearBoardMidiManager @Inject constructor(
         val channel = midiChannel.coerceIn(0, 15)
         val statusByte = (0xB0 or channel).toByte()
         val data = byteArrayOf(statusByte, ccNumber.toByte(), value.toByte())
+        Log.d(TAG, "sendCC: ch=$channel cc=$ccNumber val=$value")
 
         sendMidiData(data)
 
@@ -217,8 +218,13 @@ class GearBoardMidiManager @Inject constructor(
         }
 
         // Also send via BLE peripheral if a host (Mac/PC) is connected
-        if (blePeripheral.state.value is BleMidiPeripheral.PeripheralState.Connected) {
+        val peripheralState = blePeripheral.state.value
+        Log.d(TAG, "sendMidiData: peripheralState=$peripheralState")
+        if (peripheralState is BleMidiPeripheral.PeripheralState.Connected) {
+            Log.d(TAG, "sendMidiData: forwarding to BLE peripheral")
             blePeripheral.sendMidiData(data)
+        } else {
+            Log.d(TAG, "sendMidiData: BLE peripheral not connected, skipping")
         }
     }
 

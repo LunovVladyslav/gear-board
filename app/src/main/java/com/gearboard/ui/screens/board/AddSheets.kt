@@ -34,56 +34,56 @@ private val pedalTemplates = listOf(
         name = "Overdrive",
         type = "Distortion",
         controls = listOf(
-            ControlParam("od_drive", "Drive"),
-            ControlParam("od_tone", "Tone"),
-            ControlParam("od_level", "Level")
+            ControlParam("od_drive", "Drive", ccNumber = 1),
+            ControlParam("od_tone", "Tone", ccNumber = 2),
+            ControlParam("od_level", "Level", ccNumber = 3)
         ),
-        toggleButtons = listOf(ToggleButton("od_boost", "Boost"))
+        toggleButtons = listOf(ToggleButton("od_boost", "Boost", ccNumber = 4))
     ),
     Pedal(
         name = "Delay",
         type = "Time",
         controls = listOf(
-            ControlParam("dl_time", "Time", unit = "ms", maxValue = 2000f),
-            ControlParam("dl_feedback", "Feedback", unit = "%"),
-            ControlParam("dl_mix", "Mix", unit = "%")
+            ControlParam("dl_time", "Time", unit = "ms", maxValue = 2000f, ccNumber = 5),
+            ControlParam("dl_feedback", "Feedback", unit = "%", ccNumber = 6),
+            ControlParam("dl_mix", "Mix", unit = "%", ccNumber = 7)
         ),
-        tapButtons = listOf(TapButton("dl_tap", "TAP"))
+        tapButtons = listOf(TapButton("dl_tap", "TAP", ccNumber = 8))
     ),
     Pedal(
         name = "Reverb",
         type = "Ambient",
         controls = listOf(
-            ControlParam("rv_decay", "Decay"),
-            ControlParam("rv_mix", "Mix", unit = "%"),
-            ControlParam("rv_tone", "Tone")
+            ControlParam("rv_decay", "Decay", ccNumber = 9),
+            ControlParam("rv_mix", "Mix", unit = "%", ccNumber = 10),
+            ControlParam("rv_tone", "Tone", ccNumber = 11)
         )
     ),
     Pedal(
         name = "Chorus",
         type = "Modulation",
         controls = listOf(
-            ControlParam("ch_rate", "Rate", unit = "Hz", maxValue = 10f),
-            ControlParam("ch_depth", "Depth", unit = "%"),
-            ControlParam("ch_mix", "Mix", unit = "%")
+            ControlParam("ch_rate", "Rate", unit = "Hz", maxValue = 10f, ccNumber = 12),
+            ControlParam("ch_depth", "Depth", unit = "%", ccNumber = 13),
+            ControlParam("ch_mix", "Mix", unit = "%", ccNumber = 14)
         )
     ),
     Pedal(
         name = "Compressor",
         type = "Dynamics",
         controls = listOf(
-            ControlParam("cmp_thresh", "Thresh", unit = "dB"),
-            ControlParam("cmp_ratio", "Ratio"),
-            ControlParam("cmp_gain", "Gain", unit = "dB")
+            ControlParam("cmp_thresh", "Thresh", unit = "dB", ccNumber = 15),
+            ControlParam("cmp_ratio", "Ratio", ccNumber = 16),
+            ControlParam("cmp_gain", "Gain", unit = "dB", ccNumber = 17)
         )
     ),
     Pedal(
         name = "Wah",
         type = "Filter",
         controls = listOf(
-            ControlParam("wah_pos", "Position"),
-            ControlParam("wah_range", "Range"),
-            ControlParam("wah_q", "Q")
+            ControlParam("wah_pos", "Position", ccNumber = 18),
+            ControlParam("wah_range", "Range", ccNumber = 19),
+            ControlParam("wah_q", "Q", ccNumber = 20)
         )
     )
 )
@@ -94,37 +94,37 @@ private val effectTemplates = listOf(
         name = "Graphic EQ",
         type = "EQ",
         controls = listOf(
-            ControlParam("eq_80", "80Hz", unit = "dB", minValue = -12f, maxValue = 12f),
-            ControlParam("eq_250", "250Hz", unit = "dB", minValue = -12f, maxValue = 12f),
-            ControlParam("eq_800", "800Hz", unit = "dB", minValue = -12f, maxValue = 12f),
-            ControlParam("eq_2k5", "2.5kHz", unit = "dB", minValue = -12f, maxValue = 12f),
-            ControlParam("eq_8k", "8kHz", unit = "dB", minValue = -12f, maxValue = 12f)
+            ControlParam("eq_80", "80Hz", unit = "dB", minValue = -12f, maxValue = 12f, ccNumber = 30),
+            ControlParam("eq_250", "250Hz", unit = "dB", minValue = -12f, maxValue = 12f, ccNumber = 31),
+            ControlParam("eq_800", "800Hz", unit = "dB", minValue = -12f, maxValue = 12f, ccNumber = 32),
+            ControlParam("eq_2k5", "2.5kHz", unit = "dB", minValue = -12f, maxValue = 12f, ccNumber = 33),
+            ControlParam("eq_8k", "8kHz", unit = "dB", minValue = -12f, maxValue = 12f, ccNumber = 34)
         )
     ),
     Effect(
         name = "Noise Gate",
         type = "Dynamics",
         controls = listOf(
-            ControlParam("ng_thresh", "Threshold", unit = "dB"),
-            ControlParam("ng_decay", "Decay", unit = "ms")
+            ControlParam("ng_thresh", "Threshold", unit = "dB", ccNumber = 35),
+            ControlParam("ng_decay", "Decay", unit = "ms", ccNumber = 36)
         )
     ),
     Effect(
         name = "Tremolo",
         type = "Modulation",
         controls = listOf(
-            ControlParam("tr_speed", "Speed", unit = "Hz", maxValue = 10f),
-            ControlParam("tr_depth", "Depth", unit = "%"),
-            ControlParam("tr_wave", "Wave")
+            ControlParam("tr_speed", "Speed", unit = "Hz", maxValue = 10f, ccNumber = 37),
+            ControlParam("tr_depth", "Depth", unit = "%", ccNumber = 38),
+            ControlParam("tr_wave", "Wave", ccNumber = 39)
         )
     ),
     Effect(
         name = "Phaser",
         type = "Modulation",
         controls = listOf(
-            ControlParam("ph_rate", "Rate", unit = "Hz", maxValue = 10f),
-            ControlParam("ph_depth", "Depth", unit = "%"),
-            ControlParam("ph_feedback", "Feedback", unit = "%")
+            ControlParam("ph_rate", "Rate", unit = "Hz", maxValue = 10f, ccNumber = 40),
+            ControlParam("ph_depth", "Depth", unit = "%", ccNumber = 41),
+            ControlParam("ph_feedback", "Feedback", unit = "%", ccNumber = 42)
         )
     )
 )

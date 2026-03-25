@@ -74,9 +74,9 @@ class BoardViewModel @Inject constructor(
         state.pedals.find { it.id == pedalId }?.let { pedal ->
             val newEnabled = !pedal.enabled
             boardRepository.updatePedal(pedal.copy(enabled = newEnabled))
-            // Send CC for enable/disable — use first control's CC - 1, or fallback to CC 50+ index
-            val ccNum = pedal.controls.firstOrNull()?.ccNumber?.let { it + 50 }
-                ?: (50 + state.pedals.indexOf(pedal))
+            // Send CC 82+ for pedal enable/disable (CC 80-95 = safe custom range)
+            val pedalIndex = state.pedals.indexOf(pedal)
+            val ccNum = 82 + pedalIndex
             if (ccNum in 0..127) {
                 midiManager.sendControlChange(ccNum, if (newEnabled) 127 else 0)
             }
@@ -122,8 +122,8 @@ class BoardViewModel @Inject constructor(
         val amp = boardRepository.getCurrentState().amp
         val newEnabled = !amp.enabled
         boardRepository.updateAmp(amp.copy(enabled = newEnabled))
-        // Send CC 49 for amp enable/disable
-        midiManager.sendControlChange(49, if (newEnabled) 127 else 0)
+        // Send CC 80 for amp enable/disable
+        midiManager.sendControlChange(80, if (newEnabled) 127 else 0)
     }
 
     fun updateAmpControl(controlId: String, value: Float) {
@@ -145,8 +145,8 @@ class BoardViewModel @Inject constructor(
         val cab = boardRepository.getCurrentState().cabinet
         val newEnabled = !cab.enabled
         boardRepository.updateCabinet(cab.copy(enabled = newEnabled))
-        // Send CC 48 for cab enable/disable
-        midiManager.sendControlChange(48, if (newEnabled) 127 else 0)
+        // Send CC 81 for cab enable/disable
+        midiManager.sendControlChange(81, if (newEnabled) 127 else 0)
     }
 
     fun updateCabControl(controlId: String, value: Float) {
@@ -178,9 +178,9 @@ class BoardViewModel @Inject constructor(
         state.effects.find { it.id == effectId }?.let { effect ->
             val newEnabled = !effect.enabled
             boardRepository.updateEffect(effect.copy(enabled = newEnabled))
-            // Send CC using first control's CC + 50, or CC 47
-            val ccNum = effect.controls.firstOrNull()?.ccNumber?.let { it + 50 }
-                ?: 47
+            // Send CC 90+ for effect enable/disable
+            val effectIndex = state.effects.indexOf(effect)
+            val ccNum = 90 + effectIndex
             if (ccNum in 0..127) {
                 midiManager.sendControlChange(ccNum, if (newEnabled) 127 else 0)
             }

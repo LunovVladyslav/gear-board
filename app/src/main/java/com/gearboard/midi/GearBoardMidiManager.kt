@@ -158,23 +158,32 @@ class GearBoardMidiManager @Inject constructor(
     }
 
     /**
-     * Send a Control Change message.
+     * Send a Control Change message using the global MIDI channel.
      * @param ccNumber 0-127
      * @param value 0-127
      */
     fun sendControlChange(ccNumber: Int, value: Int) {
-        val channel = midiChannel.coerceIn(0, 15)
-        val statusByte = (0xB0 or channel).toByte()
+        sendControlChange(ccNumber, value, midiChannel + 1)
+    }
+
+    /**
+     * Send a Control Change message on a specific channel.
+     * @param ccNumber 0-127
+     * @param value 0-127
+     * @param channel 1-16 (MIDI channel)
+     */
+    fun sendControlChange(ccNumber: Int, value: Int, channel: Int) {
+        val ch = (channel - 1).coerceIn(0, 15)
+        val statusByte = (0xB0 or ch).toByte()
         val data = byteArrayOf(statusByte, ccNumber.toByte(), value.toByte())
-        Log.d(TAG, "sendCC: ch=$channel cc=$ccNumber val=$value")
+        Log.d(TAG, "sendCC: ch=$ch cc=$ccNumber val=$value")
 
         sendMidiData(data)
 
-        // Emit event for monitor
         _midiEvents.tryEmit(
             MidiEvent(
                 type = MidiEventType.CONTROL_CHANGE,
-                channel = channel,
+                channel = ch,
                 data1 = ccNumber,
                 data2 = value,
                 direction = MidiDirection.OUTGOING,
@@ -184,12 +193,21 @@ class GearBoardMidiManager @Inject constructor(
     }
 
     /**
-     * Send a Program Change message.
+     * Send a Program Change message using the global MIDI channel.
      * @param program 0-127
      */
     fun sendProgramChange(program: Int) {
-        val channel = midiChannel.coerceIn(0, 15)
-        val statusByte = (0xC0 or channel).toByte()
+        sendProgramChange(program, midiChannel + 1)
+    }
+
+    /**
+     * Send a Program Change message on a specific channel.
+     * @param program 0-127
+     * @param channel 1-16 (MIDI channel)
+     */
+    fun sendProgramChange(program: Int, channel: Int) {
+        val ch = (channel - 1).coerceIn(0, 15)
+        val statusByte = (0xC0 or ch).toByte()
         val data = byteArrayOf(statusByte, program.toByte())
 
         sendMidiData(data)
@@ -197,8 +215,59 @@ class GearBoardMidiManager @Inject constructor(
         _midiEvents.tryEmit(
             MidiEvent(
                 type = MidiEventType.PROGRAM_CHANGE,
-                channel = channel,
+                channel = ch,
                 data1 = program,
+                data2 = 0,
+                direction = MidiDirection.OUTGOING,
+                rawBytes = data
+            )
+        )
+    }
+
+    /**
+     * Send a Note On message.
+     * @param note 0-127
+     * @param velocity 0-127
+     * @param channel 1-16 (MIDI channel)
+     */
+    fun sendNoteOn(note: Int, velocity: Int, channel: Int) {
+        val ch = (channel - 1).coerceIn(0, 15)
+        val statusByte = (0x90 or ch).toByte()
+        val data = byteArrayOf(statusByte, note.toByte(), velocity.toByte())
+        Log.d(TAG, "sendNoteOn: ch=$ch note=$note vel=$velocity")
+
+        sendMidiData(data)
+
+        _midiEvents.tryEmit(
+            MidiEvent(
+                type = MidiEventType.NOTE_ON,
+                channel = ch,
+                data1 = note,
+                data2 = velocity,
+                direction = MidiDirection.OUTGOING,
+                rawBytes = data
+            )
+        )
+    }
+
+    /**
+     * Send a Note Off message.
+     * @param note 0-127
+     * @param channel 1-16 (MIDI channel)
+     */
+    fun sendNoteOff(note: Int, channel: Int) {
+        val ch = (channel - 1).coerceIn(0, 15)
+        val statusByte = (0x80 or ch).toByte()
+        val data = byteArrayOf(statusByte, note.toByte(), 0)
+        Log.d(TAG, "sendNoteOff: ch=$ch note=$note")
+
+        sendMidiData(data)
+
+        _midiEvents.tryEmit(
+            MidiEvent(
+                type = MidiEventType.NOTE_OFF,
+                channel = ch,
+                data1 = note,
                 data2 = 0,
                 direction = MidiDirection.OUTGOING,
                 rawBytes = data

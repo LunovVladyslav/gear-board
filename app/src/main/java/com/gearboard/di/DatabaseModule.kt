@@ -3,6 +3,7 @@ package com.gearboard.di
 import android.content.Context
 import androidx.room.Room
 import com.gearboard.data.local.GearBoardDatabase
+import com.gearboard.data.local.dao.ControlItemDao
 import com.gearboard.data.local.dao.MidiMappingDao
 import com.gearboard.data.local.dao.PresetDao
 import com.google.gson.Gson
@@ -38,6 +39,11 @@ object DatabaseModule {
     @Provides
     fun provideMidiMappingDao(database: GearBoardDatabase): MidiMappingDao {
         return database.midiMappingDao()
+    }
+
+    @Provides
+    fun provideControlItemDao(database: GearBoardDatabase): ControlItemDao {
+        return database.controlItemDao()
     }
 
     @Provides

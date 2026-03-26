@@ -71,6 +71,19 @@ object GearBoardDimensions {
     const val CONTROL_SIZE_MAX = 1.4f
     const val CONTROL_SIZE_DEFAULT = 1.0f
 
+    // Fader
+    val FaderMinHeight = 120.dp
+    val FaderTrackWidth = 40.dp
+
+    // Pad
+    val PadMinSize = 80.dp
+
+    // PresetNav
+    val PresetNavArrowSize = 48.dp
+
+    // Selector
+    val SelectorMinHeight = 40.dp
+
     // Monitor
     const val MONITOR_MAX_EVENTS = 500
 }

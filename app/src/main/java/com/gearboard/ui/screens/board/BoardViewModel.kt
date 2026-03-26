@@ -3,17 +3,17 @@ package com.gearboard.ui.screens.board
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gearboard.data.repository.BoardRepository
+import com.gearboard.data.repository.ControlRepository
 import com.gearboard.data.repository.SettingsRepository
 import com.gearboard.domain.model.AmpSettings
 import com.gearboard.domain.model.BoardState
 import com.gearboard.domain.model.CabinetSettings
-import com.gearboard.domain.model.ControlParam
-import com.gearboard.domain.model.Effect
-import com.gearboard.domain.model.Pedal
-import com.gearboard.domain.model.TapButton
-import com.gearboard.domain.model.ToggleButton
+import com.gearboard.domain.model.ControlBlock
+import com.gearboard.domain.model.ControlType
+import com.gearboard.domain.model.SectionType
 import com.gearboard.midi.GearBoardMidiManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,6 +26,7 @@ import javax.inject.Inject
 @HiltViewModel
 class BoardViewModel @Inject constructor(
     private val boardRepository: BoardRepository,
+    private val controlRepository: ControlRepository,
     private val midiManager: GearBoardMidiManager,
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
@@ -48,12 +49,22 @@ class BoardViewModel @Inject constructor(
     private val _effectsExpanded = MutableStateFlow(true)
     val effectsExpanded: StateFlow<Boolean> = _effectsExpanded.asStateFlow()
 
-    // Add sheet visibility
-    private val _showAddPedalSheet = MutableStateFlow(false)
-    val showAddPedalSheet: StateFlow<Boolean> = _showAddPedalSheet.asStateFlow()
+    // Dialog states
+    private val _showAddPedalBlockDialog = MutableStateFlow(false)
+    val showAddPedalBlockDialog: StateFlow<Boolean> = _showAddPedalBlockDialog.asStateFlow()
 
-    private val _showAddEffectSheet = MutableStateFlow(false)
-    val showAddEffectSheet: StateFlow<Boolean> = _showAddEffectSheet.asStateFlow()
+    private val _showAddEffectBlockDialog = MutableStateFlow(false)
+    val showAddEffectBlockDialog: StateFlow<Boolean> = _showAddEffectBlockDialog.asStateFlow()
+
+    private val _showOnboarding = MutableStateFlow(false)
+    val showOnboarding: StateFlow<Boolean> = _showOnboarding.asStateFlow()
+
+    // Auto-save debounce
+    private var autoSaveJob: Job? = null
+
+    init {
+        loadPersistedState()
+    }
 
     // --- Section expand/collapse ---
     fun togglePedalsExpanded() { _pedalsExpanded.value = !_pedalsExpanded.value }
@@ -61,164 +72,396 @@ class BoardViewModel @Inject constructor(
     fun toggleCabExpanded() { _cabExpanded.value = !_cabExpanded.value }
     fun toggleEffectsExpanded() { _effectsExpanded.value = !_effectsExpanded.value }
 
-    // --- Pedals ---
-    fun addPedal(pedal: Pedal) {
-        boardRepository.addPedal(pedal)
-        _showAddPedalSheet.value = false
+    // --- Pedal Blocks ---
+    fun addPedalBlock(block: ControlBlock) {
+        boardRepository.addPedalBlock(block)
+        _showAddPedalBlockDialog.value = false
+        triggerAutoSave()
     }
 
-    fun removePedal(pedalId: String) {
-        boardRepository.removePedal(pedalId)
+    fun removePedalBlock(blockId: String) {
+        boardRepository.removePedalBlock(blockId)
+        triggerAutoSave()
     }
 
-    /**
-     * Send a momentary CC press like a real footswitch: 127 (press) then 0 (release).
-     */
-    private fun sendMomentaryCC(ccNumber: Int) {
-        midiManager.sendControlChange(ccNumber, 127)
-        viewModelScope.launch {
-            delay(50)
-            midiManager.sendControlChange(ccNumber, 0)
+    fun renamePedalBlock(blockId: String, newName: String) {
+        boardRepository.renamePedalBlock(blockId, newName)
+        triggerAutoSave()
+    }
+
+    fun togglePedalBlockEnabled(blockId: String) {
+        val state = boardRepository.getCurrentState()
+        state.pedals.find { it.id == blockId }?.let { block ->
+            boardRepository.updatePedalBlock(block.copy(enabled = !block.enabled))
         }
     }
 
-    fun togglePedalEnabled(pedalId: String) {
-        val state = boardRepository.getCurrentState()
-        state.pedals.find { it.id == pedalId }?.let { pedal ->
-            val newEnabled = !pedal.enabled
-            boardRepository.updatePedal(pedal.copy(enabled = newEnabled))
-            // General Purpose 5-8 for pedal toggles (CC 80-83)
-            val pedalIndex = state.pedals.indexOf(pedal)
-            val ccNum = 80 + pedalIndex
-            if (ccNum in 80..83) {
-                sendMomentaryCC(ccNum)
-            }
-        }
+    // --- Effect Blocks ---
+    fun addEffectBlock(block: ControlBlock) {
+        boardRepository.addEffectBlock(block)
+        _showAddEffectBlockDialog.value = false
+        triggerAutoSave()
     }
 
-    fun updatePedalControl(pedalId: String, controlId: String, value: Float) {
-        val state = boardRepository.getCurrentState()
-        state.pedals.find { it.id == pedalId }?.let { pedal ->
-            val updatedControls = pedal.controls.map { ctrl ->
-                if (ctrl.id == controlId) {
-                    val newCtrl = ctrl.copy(value = value)
-                    // Send MIDI CC if mapped
-                    if (newCtrl.ccNumber >= 0) {
-                        val midiValue = (value * 127).toInt().coerceIn(0, 127)
-                        midiManager.sendControlChange(newCtrl.ccNumber, midiValue)
-                    }
-                    newCtrl
-                } else ctrl
-            }
-            boardRepository.updatePedal(pedal.copy(controls = updatedControls))
-        }
+    fun removeEffectBlock(blockId: String) {
+        boardRepository.removeEffectBlock(blockId)
+        triggerAutoSave()
     }
 
-    fun togglePedalButton(pedalId: String, buttonId: String) {
+    fun renameEffectBlock(blockId: String, newName: String) {
+        boardRepository.renameEffectBlock(blockId, newName)
+        triggerAutoSave()
+    }
+
+    fun toggleEffectBlockEnabled(blockId: String) {
         val state = boardRepository.getCurrentState()
-        state.pedals.find { it.id == pedalId }?.let { pedal ->
-            val updatedButtons = pedal.toggleButtons.map { btn ->
-                if (btn.id == buttonId) {
-                    val newBtn = btn.copy(enabled = !btn.enabled)
-                    if (newBtn.ccNumber >= 0) {
-                        sendMomentaryCC(newBtn.ccNumber)
-                    }
-                    newBtn
-                } else btn
-            }
-            boardRepository.updatePedal(pedal.copy(toggleButtons = updatedButtons))
+        state.effects.find { it.id == blockId }?.let { block ->
+            boardRepository.updateEffectBlock(block.copy(enabled = !block.enabled))
         }
     }
 
     // --- Amp ---
     fun toggleAmpEnabled() {
         val amp = boardRepository.getCurrentState().amp
-        val newEnabled = !amp.enabled
-        boardRepository.updateAmp(amp.copy(enabled = newEnabled))
-        // General Purpose 1 (CC 16) for amp toggle
-        sendMomentaryCC(16)
-    }
-
-    fun updateAmpControl(controlId: String, value: Float) {
-        val amp = boardRepository.getCurrentState().amp
-        val updatedControls = amp.controls.map { ctrl ->
-            if (ctrl.id == controlId) {
-                val newCtrl = ctrl.copy(value = value)
-                if (newCtrl.ccNumber >= 0) {
-                    midiManager.sendControlChange(newCtrl.ccNumber, (value * 127).toInt().coerceIn(0, 127))
-                }
-                newCtrl
-            } else ctrl
-        }
-        boardRepository.updateAmp(amp.copy(controls = updatedControls))
+        boardRepository.updateAmp(amp.copy(enabled = !amp.enabled))
     }
 
     // --- Cabinet ---
     fun toggleCabEnabled() {
         val cab = boardRepository.getCurrentState().cabinet
-        val newEnabled = !cab.enabled
-        boardRepository.updateCabinet(cab.copy(enabled = newEnabled))
-        // General Purpose 2 (CC 17) for cab toggle
-        sendMomentaryCC(17)
+        boardRepository.updateCabinet(cab.copy(enabled = !cab.enabled))
     }
 
-    fun updateCabControl(controlId: String, value: Float) {
-        val cab = boardRepository.getCurrentState().cabinet
-        val updatedControls = cab.controls.map { ctrl ->
-            if (ctrl.id == controlId) {
-                val newCtrl = ctrl.copy(value = value)
-                if (newCtrl.ccNumber >= 0) {
-                    midiManager.sendControlChange(newCtrl.ccNumber, (value * 127).toInt().coerceIn(0, 127))
-                }
-                newCtrl
-            } else ctrl
-        }
-        boardRepository.updateCabinet(cab.copy(controls = updatedControls))
+    // --- Control CRUD (block-level) ---
+    fun addControlToBlock(isPedals: Boolean, blockId: String, control: ControlType) {
+        boardRepository.addControlToBlock(isPedals, blockId, control)
+        triggerAutoSave()
     }
 
-    // --- Effects ---
-    fun addEffect(effect: Effect) {
-        boardRepository.addEffect(effect)
-        _showAddEffectSheet.value = false
+    fun removeControlFromBlock(isPedals: Boolean, blockId: String, controlId: String) {
+        boardRepository.removeControlFromBlock(isPedals, blockId, controlId)
+        triggerAutoSave()
     }
 
-    fun removeEffect(effectId: String) {
-        boardRepository.removeEffect(effectId)
+    fun updateControlInBlock(isPedals: Boolean, blockId: String, controlId: String, updatedControl: ControlType) {
+        boardRepository.updateControlInBlock(isPedals, blockId, controlId, updatedControl)
+        triggerAutoSave()
     }
 
-    fun toggleEffectEnabled(effectId: String) {
-        val state = boardRepository.getCurrentState()
-        state.effects.find { it.id == effectId }?.let { effect ->
-            val newEnabled = !effect.enabled
-            boardRepository.updateEffect(effect.copy(enabled = newEnabled))
-            // General Purpose 3-4 (CC 18-19) for effect toggles
-            val effectIndex = state.effects.indexOf(effect)
-            val ccNum = 18 + effectIndex
-            if (ccNum in 18..19) {
-                sendMomentaryCC(ccNum)
+    fun reorderControlsInBlock(isPedals: Boolean, blockId: String, reordered: List<ControlType>) {
+        boardRepository.reorderControlsInBlock(isPedals, blockId, reordered)
+        triggerAutoSave()
+    }
+
+    // --- Amp/Cab control CRUD ---
+    fun addAmpControl(control: ControlType) {
+        boardRepository.addAmpControl(control)
+        triggerAutoSave()
+    }
+
+    fun removeAmpControl(controlId: String) {
+        boardRepository.removeAmpControl(controlId)
+        triggerAutoSave()
+    }
+
+    fun updateAmpControl(controlId: String, updatedControl: ControlType) {
+        boardRepository.updateAmpControl(controlId, updatedControl)
+        triggerAutoSave()
+    }
+
+    fun clearAmpControls() {
+        boardRepository.clearAmpControls()
+        triggerAutoSave()
+    }
+
+    fun addCabControl(control: ControlType) {
+        boardRepository.addCabControl(control)
+        triggerAutoSave()
+    }
+
+    fun removeCabControl(controlId: String) {
+        boardRepository.removeCabControl(controlId)
+        triggerAutoSave()
+    }
+
+    fun updateCabControl(controlId: String, updatedControl: ControlType) {
+        boardRepository.updateCabControl(controlId, updatedControl)
+        triggerAutoSave()
+    }
+
+    fun clearCabControls() {
+        boardRepository.clearCabControls()
+        triggerAutoSave()
+    }
+
+    // --- MIDI Sending ---
+
+    /** Unified MIDI send for any ControlType interaction. */
+    fun sendControlMidi(control: ControlType) {
+        when (control) {
+            is ControlType.Knob -> {
+                val midiValue = (control.value * 127f).toInt().coerceIn(0, 127)
+                midiManager.sendControlChange(control.ccNumber, midiValue, control.midiChannel)
             }
-        }
-    }
-
-    fun updateEffectControl(effectId: String, controlId: String, value: Float) {
-        val state = boardRepository.getCurrentState()
-        state.effects.find { it.id == effectId }?.let { effect ->
-            val updatedControls = effect.controls.map { ctrl ->
-                if (ctrl.id == controlId) {
-                    val newCtrl = ctrl.copy(value = value)
-                    if (newCtrl.ccNumber >= 0) {
-                        midiManager.sendControlChange(newCtrl.ccNumber, (value * 127).toInt().coerceIn(0, 127))
+            is ControlType.Toggle -> {
+                if (control.pulseMode) {
+                    midiManager.sendControlChange(control.ccNumber, 127, control.midiChannel)
+                    viewModelScope.launch {
+                        delay(50)
+                        midiManager.sendControlChange(control.ccNumber, 0, control.midiChannel)
                     }
-                    newCtrl
-                } else ctrl
+                } else {
+                    midiManager.sendControlChange(
+                        control.ccNumber,
+                        if (control.isOn) 127 else 0,
+                        control.midiChannel
+                    )
+                }
             }
-            boardRepository.updateEffect(effect.copy(controls = updatedControls))
+            is ControlType.Tap -> {
+                midiManager.sendControlChange(control.ccNumber, 127, control.midiChannel)
+            }
+            is ControlType.Selector -> {
+                val total = control.positions.size
+                val value = if (total <= 1) 0 else (control.selectedIndex * 127) / (total - 1)
+                midiManager.sendControlChange(control.ccNumber, value, control.midiChannel)
+            }
+            is ControlType.Fader -> {
+                val midiValue = (control.value * 127f).toInt().coerceIn(0, 127)
+                midiManager.sendControlChange(control.ccNumber, midiValue, control.midiChannel)
+            }
+            is ControlType.PresetNav -> {
+                midiManager.sendProgramChange(control.currentPreset, control.midiChannel)
+            }
+            is ControlType.Pad -> {
+                // Note On handled in sendPadOn/sendPadOff
+            }
         }
     }
 
-    // --- Sheets ---
-    fun showAddPedalSheet() { _showAddPedalSheet.value = true }
-    fun hideAddPedalSheet() { _showAddPedalSheet.value = false }
-    fun showAddEffectSheet() { _showAddEffectSheet.value = true }
-    fun hideAddEffectSheet() { _showAddEffectSheet.value = false }
+    fun sendPadOn(pad: ControlType.Pad) {
+        midiManager.sendNoteOn(pad.noteNumber, pad.velocity, pad.midiChannel)
+    }
+
+    fun sendPadOff(pad: ControlType.Pad) {
+        midiManager.sendNoteOff(pad.noteNumber, pad.midiChannel)
+    }
+
+    // --- Knob/Fader value updates (with MIDI send) ---
+
+    fun onKnobValueChange(isPedals: Boolean, blockId: String, controlId: String, knob: ControlType.Knob, newValue: Float) {
+        val updated = knob.copy(value = newValue)
+        if (blockId.isEmpty()) {
+            // Amp or Cab control
+        } else {
+            updateControlInBlock(isPedals, blockId, controlId, updated)
+        }
+        sendControlMidi(updated)
+    }
+
+    fun onAmpKnobValueChange(controlId: String, knob: ControlType.Knob, newValue: Float) {
+        val updated = knob.copy(value = newValue)
+        boardRepository.updateAmpControl(controlId, updated)
+        sendControlMidi(updated)
+    }
+
+    fun onCabKnobValueChange(controlId: String, knob: ControlType.Knob, newValue: Float) {
+        val updated = knob.copy(value = newValue)
+        boardRepository.updateCabControl(controlId, updated)
+        sendControlMidi(updated)
+    }
+
+    fun onFaderValueChange(isPedals: Boolean, blockId: String, controlId: String, fader: ControlType.Fader, newValue: Float) {
+        val updated = fader.copy(value = newValue)
+        if (blockId.isEmpty()) {
+            // could be Amp or Cab
+        } else {
+            updateControlInBlock(isPedals, blockId, controlId, updated)
+        }
+        sendControlMidi(updated)
+    }
+
+    fun onAmpFaderValueChange(controlId: String, fader: ControlType.Fader, newValue: Float) {
+        val updated = fader.copy(value = newValue)
+        boardRepository.updateAmpControl(controlId, updated)
+        sendControlMidi(updated)
+    }
+
+    fun onCabFaderValueChange(controlId: String, fader: ControlType.Fader, newValue: Float) {
+        val updated = fader.copy(value = newValue)
+        boardRepository.updateCabControl(controlId, updated)
+        sendControlMidi(updated)
+    }
+
+    fun onToggle(isPedals: Boolean, blockId: String, controlId: String, toggle: ControlType.Toggle) {
+        val updated = toggle.copy(isOn = !toggle.isOn)
+        if (blockId.isNotEmpty()) {
+            updateControlInBlock(isPedals, blockId, controlId, updated)
+        }
+        sendControlMidi(updated)
+    }
+
+    fun onAmpToggle(controlId: String, toggle: ControlType.Toggle) {
+        val updated = toggle.copy(isOn = !toggle.isOn)
+        boardRepository.updateAmpControl(controlId, updated)
+        sendControlMidi(updated)
+    }
+
+    fun onCabToggle(controlId: String, toggle: ControlType.Toggle) {
+        val updated = toggle.copy(isOn = !toggle.isOn)
+        boardRepository.updateCabControl(controlId, updated)
+        sendControlMidi(updated)
+    }
+
+    fun onSelectorChange(isPedals: Boolean, blockId: String, controlId: String, selector: ControlType.Selector, newIndex: Int) {
+        val updated = selector.copy(selectedIndex = newIndex)
+        if (blockId.isNotEmpty()) {
+            updateControlInBlock(isPedals, blockId, controlId, updated)
+        }
+        sendControlMidi(updated)
+    }
+
+    fun onAmpSelectorChange(controlId: String, selector: ControlType.Selector, newIndex: Int) {
+        val updated = selector.copy(selectedIndex = newIndex)
+        boardRepository.updateAmpControl(controlId, updated)
+        sendControlMidi(updated)
+    }
+
+    fun onCabSelectorChange(controlId: String, selector: ControlType.Selector, newIndex: Int) {
+        val updated = selector.copy(selectedIndex = newIndex)
+        boardRepository.updateCabControl(controlId, updated)
+        sendControlMidi(updated)
+    }
+
+    fun onTap(control: ControlType.Tap) {
+        sendControlMidi(control)
+    }
+
+    fun onPresetNext(isPedals: Boolean, blockId: String, controlId: String, presetNav: ControlType.PresetNav) {
+        val next = (presetNav.currentPreset + 1).coerceAtMost(127)
+        val updated = presetNav.copy(currentPreset = next)
+        if (blockId.isNotEmpty()) {
+            updateControlInBlock(isPedals, blockId, controlId, updated)
+        }
+        sendControlMidi(updated)
+    }
+
+    fun onPresetPrev(isPedals: Boolean, blockId: String, controlId: String, presetNav: ControlType.PresetNav) {
+        val prev = (presetNav.currentPreset - 1).coerceAtLeast(0)
+        val updated = presetNav.copy(currentPreset = prev)
+        if (blockId.isNotEmpty()) {
+            updateControlInBlock(isPedals, blockId, controlId, updated)
+        }
+        sendControlMidi(updated)
+    }
+
+    // --- Dialog visibility ---
+    fun showAddPedalBlockDialog() { _showAddPedalBlockDialog.value = true }
+    fun hideAddPedalBlockDialog() { _showAddPedalBlockDialog.value = false }
+    fun showAddEffectBlockDialog() { _showAddEffectBlockDialog.value = true }
+    fun hideAddEffectBlockDialog() { _showAddEffectBlockDialog.value = false }
+    fun hideOnboarding() { _showOnboarding.value = false }
+
+    // --- Persistence ---
+
+    private fun triggerAutoSave() {
+        autoSaveJob?.cancel()
+        autoSaveJob = viewModelScope.launch {
+            delay(300)
+            persistCurrentState()
+        }
+    }
+
+    private suspend fun persistCurrentState() {
+        val state = boardRepository.getCurrentState()
+        controlRepository.deleteAll()
+
+        // Persist pedal blocks
+        state.pedals.forEachIndexed { blockIdx, block ->
+            block.controls.forEachIndexed { ctrlIdx, control ->
+                controlRepository.insert(
+                    controlRepository.toEntity(control, SectionType.PEDALS, block.id, ctrlIdx)
+                )
+            }
+        }
+
+        // Persist amp controls
+        val ampBlockId = "amp_main"
+        state.amp.controls.forEachIndexed { idx, control ->
+            controlRepository.insert(
+                controlRepository.toEntity(control, SectionType.AMP, ampBlockId, idx)
+            )
+        }
+
+        // Persist cab controls
+        val cabBlockId = "cab_main"
+        state.cabinet.controls.forEachIndexed { idx, control ->
+            controlRepository.insert(
+                controlRepository.toEntity(control, SectionType.CAB, cabBlockId, idx)
+            )
+        }
+
+        // Persist effect blocks
+        state.effects.forEachIndexed { blockIdx, block ->
+            block.controls.forEachIndexed { ctrlIdx, control ->
+                controlRepository.insert(
+                    controlRepository.toEntity(control, SectionType.EFFECTS, block.id, ctrlIdx)
+                )
+            }
+        }
+    }
+
+    private fun loadPersistedState() {
+        viewModelScope.launch {
+            if (controlRepository.isEmpty()) {
+                _showOnboarding.value = true
+                return@launch
+            }
+
+            val allEntities = controlRepository.getAllControlsOnce()
+            if (allEntities.isEmpty()) {
+                _showOnboarding.value = true
+                return@launch
+            }
+
+            // Group by section
+            val bySection = allEntities.groupBy { it.sectionType }
+
+            // Pedals: group by blockId
+            val pedalEntities = bySection[SectionType.PEDALS.name] ?: emptyList()
+            val pedalBlocks = pedalEntities.groupBy { it.blockId }.map { (blockId, entities) ->
+                ControlBlock(
+                    id = blockId,
+                    name = blockId, // Will be overridden by stored block name later
+                    controls = entities.sortedBy { it.sortOrder }.map { controlRepository.toDomain(it) }
+                )
+            }
+
+            // Amp
+            val ampEntities = bySection[SectionType.AMP.name] ?: emptyList()
+            val ampControls = ampEntities.sortedBy { it.sortOrder }.map { controlRepository.toDomain(it) }
+
+            // Cab
+            val cabEntities = bySection[SectionType.CAB.name] ?: emptyList()
+            val cabControls = cabEntities.sortedBy { it.sortOrder }.map { controlRepository.toDomain(it) }
+
+            // Effects: group by blockId
+            val effectEntities = bySection[SectionType.EFFECTS.name] ?: emptyList()
+            val effectBlocks = effectEntities.groupBy { it.blockId }.map { (blockId, entities) ->
+                ControlBlock(
+                    id = blockId,
+                    name = blockId,
+                    controls = entities.sortedBy { it.sortOrder }.map { controlRepository.toDomain(it) }
+                )
+            }
+
+            val state = BoardState(
+                pedals = pedalBlocks,
+                amp = AmpSettings(controls = ampControls),
+                cabinet = CabinetSettings(controls = cabControls),
+                effects = effectBlocks
+            )
+            boardRepository.loadBoardState(state)
+        }
+    }
 }

@@ -6,41 +6,16 @@ package com.gearboard.domain.model
  * separate from Room entities for clean architecture.
  */
 
-/** A single control (knob, slider) on a pedal/amp/effect */
-data class ControlParam(
-    val id: String,
-    val name: String,
-    val value: Float = 0.5f,      // 0f..1f normalized
-    val minValue: Float = 0f,
-    val maxValue: Float = 127f,   // MIDI CC range
-    val unit: String = "",        // e.g. "dB", "Hz", "%"
-    val ccNumber: Int = -1        // Assigned MIDI CC (-1 = unmapped)
-)
-
-/** Toggle button on a pedal (stomp-style on/off) */
-data class ToggleButton(
-    val id: String,
-    val label: String,
-    val enabled: Boolean = false,
-    val ccNumber: Int = -1
-)
-
-/** Tap tempo button */
-data class TapButton(
-    val id: String,
-    val label: String = "TAP",
-    val ccNumber: Int = -1
-)
-
-/** A guitar pedal with its controls */
-data class Pedal(
+/**
+ * A block (pedal, effect unit, etc.) containing arbitrary controls.
+ * Used in Pedals and Effects sections which support multiple blocks.
+ */
+data class ControlBlock(
     val id: String = java.util.UUID.randomUUID().toString(),
     val name: String,
-    val type: String = "Custom",        // e.g. "Overdrive", "Delay", "Reverb"
+    val type: String = "Custom",        // e.g. "Overdrive", "Delay", "EQ"
     val enabled: Boolean = false,
-    val controls: List<ControlParam> = emptyList(),
-    val toggleButtons: List<ToggleButton> = emptyList(),
-    val tapButtons: List<TapButton> = emptyList()
+    val controls: List<ControlType> = emptyList()
 )
 
 /** Amp section settings */
@@ -48,14 +23,7 @@ data class AmpSettings(
     val enabled: Boolean = true,
     val model: String = "Clean",
     val channel: String = "A",
-    val controls: List<ControlParam> = listOf(
-        ControlParam("gain", "Gain", ccNumber = 21),
-        ControlParam("bass", "Bass", ccNumber = 22),
-        ControlParam("mid", "Mid", ccNumber = 23),
-        ControlParam("treble", "Treble", ccNumber = 24),
-        ControlParam("presence", "Presence", ccNumber = 25),
-        ControlParam("volume", "Volume", ccNumber = 26)
-    )
+    val controls: List<ControlType> = emptyList()
 )
 
 /** Cabinet settings */
@@ -63,28 +31,15 @@ data class CabinetSettings(
     val enabled: Boolean = true,
     val model: String = "4x12",
     val micPosition: String = "Center",
-    val controls: List<ControlParam> = listOf(
-        ControlParam("mic_distance", "Mic Dist", unit = "cm", ccNumber = 27),
-        ControlParam("low_cut", "Low Cut", unit = "Hz", ccNumber = 28),
-        ControlParam("high_cut", "High Cut", unit = "Hz", ccNumber = 29)
-    )
-)
-
-/** An effect in the effects chain */
-data class Effect(
-    val id: String = java.util.UUID.randomUUID().toString(),
-    val name: String,
-    val type: String = "Custom",  // e.g. "EQ", "Compressor", "Chorus"
-    val enabled: Boolean = true,
-    val controls: List<ControlParam> = emptyList()
+    val controls: List<ControlType> = emptyList()
 )
 
 /** Complete board state (all sections) */
 data class BoardState(
-    val pedals: List<Pedal> = emptyList(),
+    val pedals: List<ControlBlock> = emptyList(),
     val amp: AmpSettings = AmpSettings(),
     val cabinet: CabinetSettings = CabinetSettings(),
-    val effects: List<Effect> = emptyList()
+    val effects: List<ControlBlock> = emptyList()
 )
 
 /** User preset */
@@ -101,7 +56,7 @@ data class Preset(
 /** MIDI CC mapping for a control */
 data class MidiMapping(
     val id: Long = 0,
-    val controlId: String,       // Reference to ControlParam.id
+    val controlId: String,       // Reference to ControlType.id
     val controlName: String,
     val ccNumber: Int,           // 0-127
     val channel: Int = 0         // 0-15 (MIDI channels 1-16)

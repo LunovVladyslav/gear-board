@@ -35,7 +35,7 @@ class SettingsRepository @Inject constructor(
     val controlSize: Flow<Float> = context.dataStore.data.map { it[CONTROL_SIZE] ?: 1.0f }
     val hapticEnabled: Flow<Boolean> = context.dataStore.data.map { it[HAPTIC_ENABLED] ?: true }
     val keepScreenOn: Flow<Boolean> = context.dataStore.data.map { it[KEEP_SCREEN_ON] ?: true }
-    val isPremium: Flow<Boolean> = context.dataStore.data.map { it[IS_PREMIUM] ?: false }
+    val isPremium: Flow<Boolean> = context.dataStore.data.map { it[IS_PREMIUM] ?: true } // TODO: set to false for production
     val autoReconnect: Flow<Boolean> = context.dataStore.data.map { it[AUTO_RECONNECT] ?: true }
 
     suspend fun setMidiChannel(channel: Int) {

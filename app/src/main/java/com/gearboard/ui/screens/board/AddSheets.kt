@@ -5,136 +5,133 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.gearboard.domain.model.ControlParam
-import com.gearboard.domain.model.Effect
-import com.gearboard.domain.model.Pedal
-import com.gearboard.domain.model.TapButton
-import com.gearboard.domain.model.ToggleButton
+import com.gearboard.domain.model.ControlBlock
+import com.gearboard.domain.model.ControlType
+import com.gearboard.domain.model.FaderOrientation
 import com.gearboard.ui.theme.GearBoardColors
 
-// Predefined pedal templates
-private val pedalTemplates = listOf(
-    Pedal(
-        name = "Overdrive",
-        type = "Distortion",
-        controls = listOf(
-            ControlParam("od_drive", "Drive", ccNumber = 1),
-            ControlParam("od_tone", "Tone", ccNumber = 2),
-            ControlParam("od_level", "Level", ccNumber = 3)
-        ),
-        toggleButtons = listOf(ToggleButton("od_boost", "Boost", ccNumber = 19))
+// --- Pedal block templates ---
+private val pedalBlockTemplates = listOf(
+    "Overdrive/Distortion" to listOf(
+        ControlType.Knob(label = "Drive", ccNumber = 0),
+        ControlType.Knob(label = "Tone", ccNumber = 0),
+        ControlType.Knob(label = "Level", ccNumber = 0),
+        ControlType.Toggle(label = "Boost", ccNumber = 0),
+        ControlType.Toggle(label = "On/Off", ccNumber = 0)
     ),
-    Pedal(
-        name = "Delay",
-        type = "Time",
-        controls = listOf(
-            ControlParam("dl_time", "Time", unit = "ms", maxValue = 2000f, ccNumber = 5),
-            ControlParam("dl_feedback", "Feedback", unit = "%", ccNumber = 6),
-            ControlParam("dl_mix", "Mix", unit = "%", ccNumber = 7)
-        ),
-        tapButtons = listOf(TapButton("dl_tap", "TAP", ccNumber = 8))
+    "Modulation" to listOf(
+        ControlType.Knob(label = "Rate", ccNumber = 0),
+        ControlType.Knob(label = "Depth", ccNumber = 0),
+        ControlType.Knob(label = "Mix", ccNumber = 0),
+        ControlType.Selector(label = "Mode", ccNumber = 0, positions = listOf("A", "B")),
+        ControlType.Toggle(label = "On/Off", ccNumber = 0)
     ),
-    Pedal(
-        name = "Reverb",
-        type = "Ambient",
-        controls = listOf(
-            ControlParam("rv_decay", "Decay", ccNumber = 9),
-            ControlParam("rv_mix", "Mix", unit = "%", ccNumber = 10),
-            ControlParam("rv_tone", "Tone", ccNumber = 11)
-        )
+    "Delay" to listOf(
+        ControlType.Knob(label = "Time", ccNumber = 0),
+        ControlType.Knob(label = "Feedback", ccNumber = 0),
+        ControlType.Knob(label = "Mix", ccNumber = 0),
+        ControlType.Tap(label = "Tap Tempo", ccNumber = 0),
+        ControlType.Toggle(label = "On/Off", ccNumber = 0)
     ),
-    Pedal(
-        name = "Chorus",
-        type = "Modulation",
-        controls = listOf(
-            ControlParam("ch_rate", "Rate", unit = "Hz", maxValue = 10f, ccNumber = 12),
-            ControlParam("ch_depth", "Depth", unit = "%", ccNumber = 13),
-            ControlParam("ch_mix", "Mix", unit = "%", ccNumber = 14)
-        )
+    "Reverb" to listOf(
+        ControlType.Knob(label = "Decay", ccNumber = 0),
+        ControlType.Knob(label = "Mix", ccNumber = 0),
+        ControlType.Toggle(label = "On/Off", ccNumber = 0)
     ),
-    Pedal(
-        name = "Compressor",
-        type = "Dynamics",
-        controls = listOf(
-            ControlParam("cmp_thresh", "Thresh", unit = "dB", ccNumber = 15),
-            ControlParam("cmp_ratio", "Ratio", ccNumber = 16),
-            ControlParam("cmp_gain", "Gain", unit = "dB", ccNumber = 17)
-        )
+    "Wah/Expression" to listOf(
+        ControlType.Fader(label = "Expression", ccNumber = 0, orientation = FaderOrientation.HORIZONTAL),
+        ControlType.Toggle(label = "On/Off", ccNumber = 0)
     ),
-    Pedal(
-        name = "Wah",
-        type = "Filter",
-        controls = listOf(
-            ControlParam("wah_pos", "Position", ccNumber = 18),
-            ControlParam("wah_range", "Range", ccNumber = 19),
-            ControlParam("wah_q", "Q", ccNumber = 20)
-        )
+    "EQ" to listOf(
+        ControlType.Fader(label = "65Hz", ccNumber = 0, orientation = FaderOrientation.VERTICAL),
+        ControlType.Fader(label = "125Hz", ccNumber = 0, orientation = FaderOrientation.VERTICAL),
+        ControlType.Fader(label = "250Hz", ccNumber = 0, orientation = FaderOrientation.VERTICAL),
+        ControlType.Fader(label = "500Hz", ccNumber = 0, orientation = FaderOrientation.VERTICAL),
+        ControlType.Fader(label = "1kHz", ccNumber = 0, orientation = FaderOrientation.VERTICAL),
+        ControlType.Fader(label = "2kHz", ccNumber = 0, orientation = FaderOrientation.VERTICAL),
+        ControlType.Fader(label = "4kHz", ccNumber = 0, orientation = FaderOrientation.VERTICAL),
+        ControlType.Fader(label = "8kHz", ccNumber = 0, orientation = FaderOrientation.VERTICAL)
     )
 )
 
-// Predefined effect templates
-private val effectTemplates = listOf(
-    Effect(
-        name = "Graphic EQ",
-        type = "EQ",
-        controls = listOf(
-            ControlParam("eq_80", "80Hz", unit = "dB", minValue = -12f, maxValue = 12f, ccNumber = 30),
-            ControlParam("eq_250", "250Hz", unit = "dB", minValue = -12f, maxValue = 12f, ccNumber = 31),
-            ControlParam("eq_800", "800Hz", unit = "dB", minValue = -12f, maxValue = 12f, ccNumber = 32),
-            ControlParam("eq_2k5", "2.5kHz", unit = "dB", minValue = -12f, maxValue = 12f, ccNumber = 33),
-            ControlParam("eq_8k", "8kHz", unit = "dB", minValue = -12f, maxValue = 12f, ccNumber = 34)
-        )
+// --- Effect block templates ---
+private val effectBlockTemplates = listOf(
+    "Chorus" to listOf(
+        ControlType.Knob(label = "Rate", ccNumber = 0),
+        ControlType.Knob(label = "Depth", ccNumber = 0),
+        ControlType.Knob(label = "Mix", ccNumber = 0)
     ),
-    Effect(
-        name = "Noise Gate",
-        type = "Dynamics",
-        controls = listOf(
-            ControlParam("ng_thresh", "Threshold", unit = "dB", ccNumber = 35),
-            ControlParam("ng_decay", "Decay", unit = "ms", ccNumber = 36)
-        )
+    "Phaser" to listOf(
+        ControlType.Knob(label = "Rate", ccNumber = 0),
+        ControlType.Knob(label = "Depth", ccNumber = 0),
+        ControlType.Knob(label = "Feedback", ccNumber = 0)
     ),
-    Effect(
-        name = "Tremolo",
-        type = "Modulation",
-        controls = listOf(
-            ControlParam("tr_speed", "Speed", unit = "Hz", maxValue = 10f, ccNumber = 37),
-            ControlParam("tr_depth", "Depth", unit = "%", ccNumber = 38),
-            ControlParam("tr_wave", "Wave", ccNumber = 39)
-        )
+    "Tremolo" to listOf(
+        ControlType.Knob(label = "Speed", ccNumber = 0),
+        ControlType.Knob(label = "Depth", ccNumber = 0)
     ),
-    Effect(
-        name = "Phaser",
-        type = "Modulation",
-        controls = listOf(
-            ControlParam("ph_rate", "Rate", unit = "Hz", maxValue = 10f, ccNumber = 40),
-            ControlParam("ph_depth", "Depth", unit = "%", ccNumber = 41),
-            ControlParam("ph_feedback", "Feedback", unit = "%", ccNumber = 42)
-        )
+    "Noise Gate" to listOf(
+        ControlType.Knob(label = "Threshold", ccNumber = 0),
+        ControlType.Knob(label = "Decay", ccNumber = 0)
+    ),
+    "Compressor" to listOf(
+        ControlType.Knob(label = "Threshold", ccNumber = 0),
+        ControlType.Knob(label = "Ratio", ccNumber = 0),
+        ControlType.Knob(label = "Gain", ccNumber = 0)
     )
 )
 
+/**
+ * AddBlockSheet — bottom sheet for adding a new pedal or effect block.
+ * Allows entering a name and optionally choosing a template.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddPedalSheet(
-    onAddPedal: (Pedal) -> Unit,
+fun AddBlockSheet(
+    title: String,
+    templates: List<Pair<String, List<ControlType>>> = pedalBlockTemplates,
+    onAddBlock: (ControlBlock) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var blockName by remember { mutableStateOf("") }
+
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = GearBoardColors.TextPrimary,
+        unfocusedTextColor = GearBoardColors.TextPrimary,
+        focusedBorderColor = GearBoardColors.Accent,
+        unfocusedBorderColor = GearBoardColors.BorderDefault,
+        cursorColor = GearBoardColors.Accent,
+        focusedLabelColor = GearBoardColors.Accent,
+        unfocusedLabelColor = GearBoardColors.TextSecondary,
+        focusedContainerColor = GearBoardColors.SurfaceVariant,
+        unfocusedContainerColor = GearBoardColors.SurfaceVariant
+    )
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -148,7 +145,7 @@ fun AddPedalSheet(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                "ADD PEDAL",
+                title.uppercase(),
                 color = GearBoardColors.Accent,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -156,12 +153,53 @@ fun AddPedalSheet(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            pedalTemplates.forEach { template ->
+            // Block name
+            OutlinedTextField(
+                value = blockName,
+                onValueChange = { if (it.length <= 20) blockName = it },
+                label = { Text("BLOCK NAME") },
+                singleLine = true,
+                colors = textFieldColors,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // Create empty
+            TemplateItem(
+                name = "Create Empty",
+                type = "No controls",
+                controlCount = 0,
+                onClick = {
+                    val name = blockName.ifBlank { "New Block" }
+                    onAddBlock(ControlBlock(name = name, type = "Custom"))
+                }
+            )
+
+            // Templates
+            Text(
+                "FROM TEMPLATE",
+                color = GearBoardColors.TextSecondary,
+                fontSize = 10.sp,
+                letterSpacing = 1.5.sp,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+
+            templates.forEach { (templateName, controls) ->
                 TemplateItem(
-                    name = template.name,
-                    type = template.type,
-                    controlCount = template.controls.size,
-                    onClick = { onAddPedal(template.copy(id = java.util.UUID.randomUUID().toString())) }
+                    name = templateName,
+                    type = "${controls.size} controls",
+                    controlCount = controls.size,
+                    onClick = {
+                        val name = blockName.ifBlank { templateName }
+                        onAddBlock(
+                            ControlBlock(
+                                name = name,
+                                type = templateName,
+                                controls = controls.map { regenerateId(it) }
+                            )
+                        )
+                    }
                 )
             }
 
@@ -170,45 +208,80 @@ fun AddPedalSheet(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Convenience wrappers */
 @Composable
-fun AddEffectSheet(
-    onAddEffect: (Effect) -> Unit,
+fun AddPedalBlockSheet(
+    onAddBlock: (ControlBlock) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(
+    AddBlockSheet(
+        title = "Add Pedal Block",
+        templates = pedalBlockTemplates,
+        onAddBlock = onAddBlock,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun AddEffectBlockSheet(
+    onAddBlock: (ControlBlock) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AddBlockSheet(
+        title = "Add Effect Block",
+        templates = effectBlockTemplates,
+        onAddBlock = onAddBlock,
+        onDismiss = onDismiss
+    )
+}
+
+/** Rename block dialog */
+@Composable
+fun RenameBlockDialog(
+    currentName: String,
+    onRename: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var newName by remember { mutableStateOf(currentName) }
+
+    AlertDialog(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = GearBoardColors.Surface,
-        contentColor = GearBoardColors.TextPrimary
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                "ADD EFFECT",
-                color = GearBoardColors.Accent,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
+        title = {
+            Text("RENAME BLOCK", color = GearBoardColors.Accent, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+        },
+        text = {
+            OutlinedTextField(
+                value = newName,
+                onValueChange = { if (it.length <= 20) newName = it },
+                label = { Text("NAME", color = GearBoardColors.TextSecondary) },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = GearBoardColors.TextPrimary,
+                    unfocusedTextColor = GearBoardColors.TextPrimary,
+                    focusedBorderColor = GearBoardColors.Accent,
+                    unfocusedBorderColor = GearBoardColors.BorderDefault,
+                    cursorColor = GearBoardColors.Accent,
+                    focusedContainerColor = GearBoardColors.SurfaceVariant,
+                    unfocusedContainerColor = GearBoardColors.SurfaceVariant
+                ),
+                modifier = Modifier.fillMaxWidth()
             )
-
-            effectTemplates.forEach { template ->
-                TemplateItem(
-                    name = template.name,
-                    type = template.type,
-                    controlCount = template.controls.size,
-                    onClick = { onAddEffect(template.copy(id = java.util.UUID.randomUUID().toString())) }
-                )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { if (newName.isNotBlank()) onRename(newName.trim()) },
+                enabled = newName.isNotBlank()
+            ) {
+                Text("RENAME", color = GearBoardColors.Accent, fontWeight = FontWeight.Bold)
             }
-
-            Spacer(Modifier.height(24.dp))
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = GearBoardColors.TextSecondary)
+            }
         }
-    }
+    )
 }
 
 @Composable
@@ -236,9 +309,23 @@ private fun TemplateItem(
             letterSpacing = 1.sp
         )
         Text(
-            text = "$type • $controlCount controls",
+            text = type,
             color = GearBoardColors.TextDisabled,
             fontSize = 11.sp
         )
+    }
+}
+
+/** Generate a new UUID for a control to avoid ID collisions when instantiating templates. */
+private fun regenerateId(control: ControlType): ControlType {
+    val newId = java.util.UUID.randomUUID().toString()
+    return when (control) {
+        is ControlType.Knob -> control.copy(id = newId)
+        is ControlType.Toggle -> control.copy(id = newId)
+        is ControlType.Tap -> control.copy(id = newId)
+        is ControlType.Selector -> control.copy(id = newId)
+        is ControlType.Fader -> control.copy(id = newId)
+        is ControlType.PresetNav -> control.copy(id = newId)
+        is ControlType.Pad -> control.copy(id = newId)
     }
 }

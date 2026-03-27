@@ -15,19 +15,33 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import com.gearboard.data.repository.SettingsRepository
 import com.gearboard.ui.components.ConnectionState
 import com.gearboard.ui.components.ConnectionStatusBar
 import com.gearboard.ui.navigation.GearBoardBottomNav
 import com.gearboard.ui.navigation.GearBoardNavHost
+import com.gearboard.ui.navigation.Screen
 import com.gearboard.ui.screens.connect.ConnectViewModel
 import com.gearboard.ui.theme.GearBoardTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Check guided setup completion synchronously (fast DataStore read)
+        val setupComplete = runBlocking { settingsRepository.guidedSetupComplete.first() }
+        val startRoute = if (setupComplete) Screen.Board.route else Screen.GuidedSetup.route
+
         setContent {
             GearBoardTheme {
                 val navController = rememberNavController()
@@ -56,7 +70,10 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .padding(innerPadding)
                     ) {
-                        GearBoardNavHost(navController)
+                        GearBoardNavHost(
+                            navController = navController,
+                            startDestination = startRoute
+                        )
                     }
                 }
             }

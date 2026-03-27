@@ -6,6 +6,9 @@ package com.gearboard.domain.model
  * separate from Room entities for clean architecture.
  */
 
+/** A/B slot for dual-state switching. */
+enum class AbSlot { A, B }
+
 /**
  * A block (pedal, effect unit, etc.) containing arbitrary controls.
  * Used in Pedals and Effects sections which support multiple blocks.
@@ -15,7 +18,10 @@ data class ControlBlock(
     val name: String,
     val type: String = "Custom",        // e.g. "Overdrive", "Delay", "EQ"
     val enabled: Boolean = false,
-    val controls: List<ControlType> = emptyList()
+    val controls: List<ControlType> = emptyList(),
+    val abSlot: AbSlot = AbSlot.A,
+    val stateA: Map<String, Float> = emptyMap(),  // controlId -> normalized value
+    val stateB: Map<String, Float> = emptyMap()
 )
 
 /** Amp section settings */
@@ -23,7 +29,10 @@ data class AmpSettings(
     val enabled: Boolean = true,
     val model: String = "Clean",
     val channel: String = "A",
-    val controls: List<ControlType> = emptyList()
+    val controls: List<ControlType> = emptyList(),
+    val abSlot: AbSlot = AbSlot.A,
+    val stateA: Map<String, Float> = emptyMap(),
+    val stateB: Map<String, Float> = emptyMap()
 )
 
 /** Cabinet settings */
@@ -31,7 +40,10 @@ data class CabinetSettings(
     val enabled: Boolean = true,
     val model: String = "4x12",
     val micPosition: String = "Center",
-    val controls: List<ControlType> = emptyList()
+    val controls: List<ControlType> = emptyList(),
+    val abSlot: AbSlot = AbSlot.A,
+    val stateA: Map<String, Float> = emptyMap(),
+    val stateB: Map<String, Float> = emptyMap()
 )
 
 /** Complete board state (all sections) */

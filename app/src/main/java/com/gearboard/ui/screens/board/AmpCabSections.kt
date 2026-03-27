@@ -49,6 +49,7 @@ fun AmpSection(
     onEditControl: (ControlType) -> Unit,
     onAddControl: () -> Unit,
     onClearAll: () -> Unit,
+    onBadgeTap: (ControlType) -> Unit = {},
     modifier: Modifier = Modifier,
     controlScale: Float = 1.0f
 ) {
@@ -70,6 +71,7 @@ fun AmpSection(
             onPadDown = onPadDown,
             onPadUp = onPadUp,
             onLongPress = onEditControl,
+            onBadgeTap = onBadgeTap,
             enabled = amp.enabled,
             controlScale = controlScale
         )
@@ -149,6 +151,7 @@ fun CabSection(
     onEditControl: (ControlType) -> Unit,
     onAddControl: () -> Unit,
     onClearAll: () -> Unit,
+    onBadgeTap: (ControlType) -> Unit = {},
     modifier: Modifier = Modifier,
     controlScale: Float = 1.0f
 ) {
@@ -170,6 +173,7 @@ fun CabSection(
             onPadDown = onPadDown,
             onPadUp = onPadUp,
             onLongPress = onEditControl,
+            onBadgeTap = onBadgeTap,
             enabled = cabinet.enabled,
             controlScale = controlScale
         )

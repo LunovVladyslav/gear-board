@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gearboard.domain.model.ControlBlock
 import com.gearboard.domain.model.ControlType
+import com.gearboard.domain.model.AbSlot
+import com.gearboard.ui.components.AbToggle
 import com.gearboard.ui.components.GearToggle
 import com.gearboard.ui.components.ToggleVariant
 import com.gearboard.ui.theme.GearBoardColors
@@ -59,6 +61,8 @@ fun EffectCard(
     onReorder: (List<ControlType>) -> Unit,
     onRename: () -> Unit,
     onRemove: () -> Unit,
+    onAbSwitch: (AbSlot) -> Unit = {},
+    onBadgeTap: (ControlType) -> Unit = {},
     modifier: Modifier = Modifier,
     controlScale: Float = 1.0f
 ) {
@@ -113,6 +117,12 @@ fun EffectCard(
                 }
             }
 
+            // A/B toggle
+            AbToggle(
+                currentSlot = block.abSlot,
+                onSlotSelected = onAbSwitch
+            )
+
             IconButton(
                 onClick = { showMenu = true },
                 modifier = Modifier.size(24.dp)
@@ -156,6 +166,7 @@ fun EffectCard(
             onPadDown = onPadDown,
             onPadUp = onPadUp,
             onLongPress = onEditControl,
+            onBadgeTap = onBadgeTap,
             onReorder = onReorder,
             enabled = block.enabled,
             controlScale = controlScale

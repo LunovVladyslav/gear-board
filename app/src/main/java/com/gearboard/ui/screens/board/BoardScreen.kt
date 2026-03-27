@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,7 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gearboard.domain.model.AbSlot
 import com.gearboard.domain.model.ControlType
+import com.gearboard.ui.components.AbToggle
 import com.gearboard.ui.components.SectionHeader
 import com.gearboard.ui.theme.GearBoardColors
 
@@ -62,6 +65,7 @@ fun BoardScreen(
     var addControlTarget by remember { mutableStateOf<AddControlTarget?>(null) }
     var editControlState by remember { mutableStateOf<EditControlState?>(null) }
     var renameTarget by remember { mutableStateOf<RenameTarget?>(null) }
+    var mappingControl by remember { mutableStateOf<MappingControlState?>(null) }
 
     // Add control dialog for amp/cab
     var showAddAmpControl by remember { mutableStateOf(false) }
@@ -128,6 +132,10 @@ fun BoardScreen(
                                         renameTarget = RenameTarget(true, block.id, block.name)
                                     },
                                     onRemove = { viewModel.removePedalBlock(block.id) },
+                                    onAbSwitch = { slot -> viewModel.switchBlockAbSlot(true, block.id, slot) },
+                                    onBadgeTap = { control ->
+                                        mappingControl = MappingControlState(control, isPedals = true, blockId = block.id, section = "pedals")
+                                    },
                                     controlScale = controlScale
                                 )
                             }
@@ -150,7 +158,18 @@ fun BoardScreen(
                 onToggleExpanded = { viewModel.toggleAmpExpanded() },
                 modifier = Modifier.padding(horizontal = 8.dp)
             ) {
-                AmpSection(
+                Column {
+                    // A/B toggle for amp
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        AbToggle(
+                            currentSlot = boardState.amp.abSlot,
+                            onSlotSelected = { viewModel.switchAmpAbSlot(it) }
+                        )
+                    }
+                    AmpSection(
                     amp = boardState.amp,
                     onKnobValueChange = { knob, value ->
                         viewModel.onAmpKnobValueChange(knob.id, knob, value)
@@ -170,8 +189,12 @@ fun BoardScreen(
                     onEditControl = { control -> editAmpControl = control },
                     onAddControl = { showAddAmpControl = true },
                     onClearAll = { viewModel.clearAmpControls() },
+                    onBadgeTap = { control ->
+                        mappingControl = MappingControlState(control, section = "amp")
+                    },
                     controlScale = controlScale
-                )
+                    )
+                }
             }
         }
 
@@ -185,7 +208,18 @@ fun BoardScreen(
                 onToggleExpanded = { viewModel.toggleCabExpanded() },
                 modifier = Modifier.padding(horizontal = 8.dp)
             ) {
-                CabSection(
+                Column {
+                    // A/B toggle for cab
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        AbToggle(
+                            currentSlot = boardState.cabinet.abSlot,
+                            onSlotSelected = { viewModel.switchCabAbSlot(it) }
+                        )
+                    }
+                    CabSection(
                     cabinet = boardState.cabinet,
                     onKnobValueChange = { knob, value ->
                         viewModel.onCabKnobValueChange(knob.id, knob, value)
@@ -205,8 +239,12 @@ fun BoardScreen(
                     onEditControl = { control -> editCabControl = control },
                     onAddControl = { showAddCabControl = true },
                     onClearAll = { viewModel.clearCabControls() },
+                    onBadgeTap = { control ->
+                        mappingControl = MappingControlState(control, section = "cab")
+                    },
                     controlScale = controlScale
                 )
+                }
             }
         }
 
@@ -262,6 +300,10 @@ fun BoardScreen(
                                         renameTarget = RenameTarget(false, block.id, block.name)
                                     },
                                     onRemove = { viewModel.removeEffectBlock(block.id) },
+                                    onAbSwitch = { slot -> viewModel.switchBlockAbSlot(false, block.id, slot) },
+                                    onBadgeTap = { control ->
+                                        mappingControl = MappingControlState(control, isPedals = false, blockId = block.id, section = "effects")
+                                    },
                                     controlScale = controlScale
                                 )
                             }
@@ -400,6 +442,26 @@ fun BoardScreen(
             onStartEmpty = { viewModel.hideOnboarding() }
         )
     }
+
+    // Mapping dialog (from "!" badge tap)
+    mappingControl?.let { state ->
+        MappingDialog(
+            control = state.control,
+            onSave = { ccNumber ->
+                val updated = updateControlCcNumber(state.control, ccNumber)
+                if (updated != null) {
+                    when {
+                        state.section == "amp" -> viewModel.updateAmpControl(state.control.id, updated)
+                        state.section == "cab" -> viewModel.updateCabControl(state.control.id, updated)
+                        state.isPedals -> viewModel.updateControlInBlock(true, state.blockId, state.control.id, updated)
+                        else -> viewModel.updateControlInBlock(false, state.blockId, state.control.id, updated)
+                    }
+                }
+                mappingControl = null
+            },
+            onDismiss = { mappingControl = null }
+        )
+    }
 }
 
 // --- Helper data classes for dialog state ---
@@ -407,6 +469,12 @@ fun BoardScreen(
 private data class AddControlTarget(val isPedals: Boolean, val blockId: String)
 private data class EditControlState(val isPedals: Boolean, val blockId: String, val control: ControlType)
 private data class RenameTarget(val isPedals: Boolean, val blockId: String, val currentName: String)
+private data class MappingControlState(
+    val control: ControlType,
+    val isPedals: Boolean = false,
+    val blockId: String = "",
+    val section: String = "" // "amp", "cab", "pedals", "effects"
+)
 
 // --- Helper composables ---
 
@@ -521,5 +589,85 @@ private fun applyOnboardingTemplate(template: OnboardingTemplate, viewModel: Boa
                 ControlType.Selector(label = "Mic", ccNumber = 0, positions = listOf("RE20", "U47"))
             ).forEach { viewModel.addCabControl(it) }
         }
+        OnboardingTemplate.MULTI_FX_BOARD -> {
+            // Pedals: Compressor + Overdrive
+            viewModel.addPedalBlock(
+                com.gearboard.domain.model.ControlBlock(
+                    name = "Compressor", type = "Dynamics",
+                    controls = listOf(
+                        ControlType.Knob(label = "Threshold", ccNumber = 0),
+                        ControlType.Knob(label = "Ratio", ccNumber = 0),
+                        ControlType.Knob(label = "Level", ccNumber = 0),
+                        ControlType.Toggle(label = "On/Off", ccNumber = 0)
+                    )
+                )
+            )
+            viewModel.addPedalBlock(
+                com.gearboard.domain.model.ControlBlock(
+                    name = "Overdrive", type = "Distortion",
+                    controls = listOf(
+                        ControlType.Knob(label = "Drive", ccNumber = 0),
+                        ControlType.Knob(label = "Tone", ccNumber = 0),
+                        ControlType.Knob(label = "Level", ccNumber = 0),
+                        ControlType.Toggle(label = "On/Off", ccNumber = 0)
+                    )
+                )
+            )
+            // Amp
+            listOf(
+                ControlType.Knob(label = "Gain", ccNumber = 0),
+                ControlType.Knob(label = "Bass", ccNumber = 0),
+                ControlType.Knob(label = "Mid", ccNumber = 0),
+                ControlType.Knob(label = "Treble", ccNumber = 0),
+                ControlType.Knob(label = "Master", ccNumber = 0)
+            ).forEach { viewModel.addAmpControl(it) }
+            // Effects: Chorus + Delay + Reverb
+            viewModel.addEffectBlock(
+                com.gearboard.domain.model.ControlBlock(
+                    name = "Chorus", type = "Modulation",
+                    controls = listOf(
+                        ControlType.Knob(label = "Rate", ccNumber = 0),
+                        ControlType.Knob(label = "Depth", ccNumber = 0),
+                        ControlType.Knob(label = "Mix", ccNumber = 0),
+                        ControlType.Toggle(label = "On/Off", ccNumber = 0)
+                    )
+                )
+            )
+            viewModel.addEffectBlock(
+                com.gearboard.domain.model.ControlBlock(
+                    name = "Delay", type = "Time",
+                    controls = listOf(
+                        ControlType.Knob(label = "Time", ccNumber = 0),
+                        ControlType.Knob(label = "Feedback", ccNumber = 0),
+                        ControlType.Knob(label = "Mix", ccNumber = 0),
+                        ControlType.Tap(label = "Tap Tempo", ccNumber = 0),
+                        ControlType.Toggle(label = "On/Off", ccNumber = 0)
+                    )
+                )
+            )
+            viewModel.addEffectBlock(
+                com.gearboard.domain.model.ControlBlock(
+                    name = "Reverb", type = "Reverb",
+                    controls = listOf(
+                        ControlType.Knob(label = "Size", ccNumber = 0),
+                        ControlType.Knob(label = "Decay", ccNumber = 0),
+                        ControlType.Knob(label = "Mix", ccNumber = 0),
+                        ControlType.Toggle(label = "On/Off", ccNumber = 0)
+                    )
+                )
+            )
+        }
+    }
+}
+
+/** Create a copy of a control with an updated ccNumber. */
+private fun updateControlCcNumber(control: ControlType, ccNumber: Int): ControlType? {
+    return when (control) {
+        is ControlType.Knob -> control.copy(ccNumber = ccNumber)
+        is ControlType.Toggle -> control.copy(ccNumber = ccNumber)
+        is ControlType.Tap -> control.copy(ccNumber = ccNumber)
+        is ControlType.Selector -> control.copy(ccNumber = ccNumber)
+        is ControlType.Fader -> control.copy(ccNumber = ccNumber)
+        else -> null
     }
 }

@@ -23,7 +23,8 @@ import com.gearboard.ui.theme.GearBoardColors
 
 enum class OnboardingTemplate {
     GUITAR_AMP_SIM,
-    BASS_AMP_SIM
+    BASS_AMP_SIM,
+    MULTI_FX_BOARD
 }
 
 /**

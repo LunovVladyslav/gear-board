@@ -1,5 +1,6 @@
 package com.gearboard.data.repository
 
+import com.gearboard.domain.model.AbSlot
 import com.gearboard.domain.model.AmpSettings
 import com.gearboard.domain.model.BoardState
 import com.gearboard.domain.model.CabinetSettings
@@ -236,4 +237,102 @@ class BoardRepository @Inject constructor() {
     }
 
     fun getCurrentState(): BoardState = _boardState.value
+
+    // --- A/B switching ---
+
+    /**
+     * Switch A/B slot for a pedal or effect block.
+     * Saves current control values into current slot, loads target slot's values.
+     */
+    fun switchBlockAbSlot(isPedals: Boolean, blockId: String, targetSlot: AbSlot) {
+        val blocks = if (isPedals) _boardState.value.pedals else _boardState.value.effects
+        val block = blocks.find { it.id == blockId } ?: return
+        if (block.abSlot == targetSlot) return
+
+        // Save current values
+        val currentValues = captureControlValues(block.controls)
+        val updatedStateA = if (block.abSlot == AbSlot.A) currentValues else block.stateA
+        val updatedStateB = if (block.abSlot == AbSlot.B) currentValues else block.stateB
+
+        // Load target slot values
+        val targetValues = if (targetSlot == AbSlot.A) updatedStateA else updatedStateB
+        val newControls = applyControlValues(block.controls, targetValues)
+
+        val updatedBlock = block.copy(
+            abSlot = targetSlot,
+            controls = newControls,
+            stateA = updatedStateA,
+            stateB = updatedStateB
+        )
+
+        if (isPedals) {
+            _boardState.value = _boardState.value.copy(
+                pedals = _boardState.value.pedals.map { if (it.id == blockId) updatedBlock else it }
+            )
+        } else {
+            _boardState.value = _boardState.value.copy(
+                effects = _boardState.value.effects.map { if (it.id == blockId) updatedBlock else it }
+            )
+        }
+    }
+
+    /** Switch A/B for amp. */
+    fun switchAmpAbSlot(targetSlot: AbSlot) {
+        val amp = _boardState.value.amp
+        if (amp.abSlot == targetSlot) return
+
+        val currentValues = captureControlValues(amp.controls)
+        val updatedStateA = if (amp.abSlot == AbSlot.A) currentValues else amp.stateA
+        val updatedStateB = if (amp.abSlot == AbSlot.B) currentValues else amp.stateB
+        val targetValues = if (targetSlot == AbSlot.A) updatedStateA else updatedStateB
+        val newControls = applyControlValues(amp.controls, targetValues)
+
+        _boardState.value = _boardState.value.copy(
+            amp = amp.copy(abSlot = targetSlot, controls = newControls, stateA = updatedStateA, stateB = updatedStateB)
+        )
+    }
+
+    /** Switch A/B for cabinet. */
+    fun switchCabAbSlot(targetSlot: AbSlot) {
+        val cab = _boardState.value.cabinet
+        if (cab.abSlot == targetSlot) return
+
+        val currentValues = captureControlValues(cab.controls)
+        val updatedStateA = if (cab.abSlot == AbSlot.A) currentValues else cab.stateA
+        val updatedStateB = if (cab.abSlot == AbSlot.B) currentValues else cab.stateB
+        val targetValues = if (targetSlot == AbSlot.A) updatedStateA else updatedStateB
+        val newControls = applyControlValues(cab.controls, targetValues)
+
+        _boardState.value = _boardState.value.copy(
+            cabinet = cab.copy(abSlot = targetSlot, controls = newControls, stateA = updatedStateA, stateB = updatedStateB)
+        )
+    }
+
+    // --- A/B helpers ---
+
+    private fun captureControlValues(controls: List<ControlType>): Map<String, Float> {
+        return controls.mapNotNull { ctrl ->
+            when (ctrl) {
+                is ControlType.Knob -> ctrl.id to ctrl.value
+                is ControlType.Fader -> ctrl.id to ctrl.value
+                is ControlType.Toggle -> ctrl.id to (if (ctrl.isOn) 1f else 0f)
+                is ControlType.Selector -> ctrl.id to (ctrl.selectedIndex.toFloat())
+                else -> null
+            }
+        }.toMap()
+    }
+
+    private fun applyControlValues(controls: List<ControlType>, values: Map<String, Float>): List<ControlType> {
+        if (values.isEmpty()) return controls
+        return controls.map { ctrl ->
+            val v = values[ctrl.id] ?: return@map ctrl
+            when (ctrl) {
+                is ControlType.Knob -> ctrl.copy(value = v)
+                is ControlType.Fader -> ctrl.copy(value = v)
+                is ControlType.Toggle -> ctrl.copy(isOn = v > 0.5f)
+                is ControlType.Selector -> ctrl.copy(selectedIndex = v.toInt().coerceIn(0, ctrl.positions.size - 1))
+                else -> ctrl
+            }
+        }
+    }
 }

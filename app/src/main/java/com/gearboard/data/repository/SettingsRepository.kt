@@ -28,6 +28,7 @@ class SettingsRepository @Inject constructor(
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val IS_PREMIUM = booleanPreferencesKey("is_premium")
         val AUTO_RECONNECT = booleanPreferencesKey("auto_reconnect")
+        val GUIDED_SETUP_COMPLETE = booleanPreferencesKey("guided_setup_complete")
     }
 
     val midiChannel: Flow<Int> = context.dataStore.data.map { it[MIDI_CHANNEL] ?: 0 }
@@ -37,6 +38,7 @@ class SettingsRepository @Inject constructor(
     val keepScreenOn: Flow<Boolean> = context.dataStore.data.map { it[KEEP_SCREEN_ON] ?: true }
     val isPremium: Flow<Boolean> = context.dataStore.data.map { it[IS_PREMIUM] ?: true } // TODO: set to false for production
     val autoReconnect: Flow<Boolean> = context.dataStore.data.map { it[AUTO_RECONNECT] ?: true }
+    val guidedSetupComplete: Flow<Boolean> = context.dataStore.data.map { it[GUIDED_SETUP_COMPLETE] ?: false }
 
     suspend fun setMidiChannel(channel: Int) {
         context.dataStore.edit { it[MIDI_CHANNEL] = channel }
@@ -64,6 +66,10 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setAutoReconnect(enabled: Boolean) {
         context.dataStore.edit { it[AUTO_RECONNECT] = enabled }
+    }
+
+    suspend fun setGuidedSetupComplete(complete: Boolean) {
+        context.dataStore.edit { it[GUIDED_SETUP_COMPLETE] = complete }
     }
 
     suspend fun resetToDefaults() {

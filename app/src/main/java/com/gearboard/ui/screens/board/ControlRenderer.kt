@@ -42,10 +42,12 @@ fun RenderControl(
     onPadDown: (ControlType.Pad) -> Unit = {},
     onPadUp: (ControlType.Pad) -> Unit = {},
     onLongPress: (ControlType) -> Unit = {},
+    onBadgeTap: (ControlType) -> Unit = {},
     enabled: Boolean = true,
     controlScale: Float = 1.0f,
     modifier: Modifier = Modifier
 ) {
+    UnmappedBadge(control = control, onBadgeTap = { onBadgeTap(control) }) {
     when (control) {
         is ControlType.Knob -> {
             val knobSize = (GearBoardDimensions.KnobDefaultSize.value * controlScale).dp
@@ -124,6 +126,7 @@ fun RenderControl(
             )
         }
     }
+    } // end UnmappedBadge
 }
 
 /**
@@ -144,6 +147,7 @@ fun RenderControlList(
     onPadDown: (ControlType.Pad) -> Unit = {},
     onPadUp: (ControlType.Pad) -> Unit = {},
     onLongPress: (ControlType) -> Unit = {},
+    onBadgeTap: (ControlType) -> Unit = {},
     onReorder: ((List<ControlType>) -> Unit)? = null,
     enabled: Boolean = true,
     controlScale: Float = 1.0f,
@@ -171,6 +175,7 @@ fun RenderControlList(
                 onPadDown = onPadDown,
                 onPadUp = onPadUp,
                 onLongPress = onLongPress,
+                onBadgeTap = onBadgeTap,
                 enabled = enabled,
                 controlScale = controlScale
             )

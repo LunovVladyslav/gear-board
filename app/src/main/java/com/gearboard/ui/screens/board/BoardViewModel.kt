@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.gearboard.data.repository.BoardRepository
 import com.gearboard.data.repository.ControlRepository
 import com.gearboard.data.repository.SettingsRepository
+import com.gearboard.domain.model.AbSlot
 import com.gearboard.domain.model.AmpSettings
 import com.gearboard.domain.model.BoardState
 import com.gearboard.domain.model.CabinetSettings
@@ -463,5 +464,25 @@ class BoardViewModel @Inject constructor(
             )
             boardRepository.loadBoardState(state)
         }
+    }
+
+    // --- A/B switching ---
+
+    fun switchBlockAbSlot(isPedals: Boolean, blockId: String, slot: AbSlot) {
+        boardRepository.switchBlockAbSlot(isPedals, blockId, slot)
+        // Send MIDI CC for all controls in the block after switch
+        val blocks = if (isPedals) boardRepository.boardState.value.pedals
+                     else boardRepository.boardState.value.effects
+        blocks.find { it.id == blockId }?.controls?.forEach { sendControlMidi(it) }
+    }
+
+    fun switchAmpAbSlot(slot: AbSlot) {
+        boardRepository.switchAmpAbSlot(slot)
+        boardRepository.boardState.value.amp.controls.forEach { sendControlMidi(it) }
+    }
+
+    fun switchCabAbSlot(slot: AbSlot) {
+        boardRepository.switchCabAbSlot(slot)
+        boardRepository.boardState.value.cabinet.controls.forEach { sendControlMidi(it) }
     }
 }

@@ -7,7 +7,6 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Piano
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sensors
-import androidx.compose.material.icons.filled.Monitor
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -30,6 +29,7 @@ import com.gearboard.ui.screens.midimap.MidiMapScreen
 import com.gearboard.ui.screens.monitor.MonitorScreen
 import com.gearboard.ui.screens.presets.PresetScreen
 import com.gearboard.ui.screens.settings.SettingsScreen
+import com.gearboard.ui.screens.setup.GuidedSetupScreen
 import com.gearboard.ui.theme.GearBoardColors
 
 /**
@@ -42,11 +42,11 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     data object MidiMap : Screen("midi_map", "MIDI Map", Icons.Default.Piano)
     data object Monitor : Screen("monitor", "Monitor", Icons.Default.Sensors)
     data object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    data object GuidedSetup : Screen("guided_setup", "Setup", Icons.Default.Settings)
 }
 
 val bottomNavItems = listOf(
     Screen.Board,
-    Screen.Connect,
     Screen.Presets,
     Screen.MidiMap,
     Screen.Settings
@@ -59,6 +59,9 @@ val bottomNavItems = listOf(
 fun GearBoardBottomNav(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+
+    // Hide bottom nav on GuidedSetup screen
+    if (currentDestination?.route == Screen.GuidedSetup.route) return
 
     NavigationBar(
         containerColor = GearBoardColors.Surface,
@@ -103,18 +106,37 @@ fun GearBoardBottomNav(navController: NavHostController) {
 
 /**
  * Navigation host with all screens.
+ * @param startDestination Initial route — "guided_setup" for first launch, "board" otherwise
  */
 @Composable
-fun GearBoardNavHost(navController: NavHostController) {
+fun GearBoardNavHost(
+    navController: NavHostController,
+    startDestination: String = Screen.Board.route
+) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Board.route
+        startDestination = startDestination
     ) {
         composable(Screen.Board.route) { BoardScreen() }
         composable(Screen.Connect.route) { ConnectScreen() }
         composable(Screen.Presets.route) { PresetScreen() }
         composable(Screen.MidiMap.route) { MidiMapScreen() }
         composable(Screen.Monitor.route) { MonitorScreen() }
-        composable(Screen.Settings.route) { SettingsScreen() }
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onOpenMonitor = {
+                    navController.navigate(Screen.Monitor.route)
+                }
+            )
+        }
+        composable(Screen.GuidedSetup.route) {
+            GuidedSetupScreen(
+                onNavigateToBoard = {
+                    navController.navigate(Screen.Board.route) {
+                        popUpTo(Screen.GuidedSetup.route) { inclusive = true }
+                    }
+                }
+            )
+        }
     }
 }

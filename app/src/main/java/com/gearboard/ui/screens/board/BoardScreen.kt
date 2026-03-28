@@ -159,7 +159,7 @@ fun BoardScreen(
                 .background(GearBoardColors.Background)
                 .padding(innerPadding),
             contentPadding = PaddingValues(bottom = 88.dp, top = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
         item {
             SectionHeader(

@@ -18,7 +18,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -85,8 +84,9 @@ fun GearBoardBottomNav(navController: NavHostController) {
                 selected = selected,
                 onClick = {
                     navController.navigate(screen.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
+                        popUpTo(Screen.Board.route) {
                             saveState = true
+                            inclusive = false
                         }
                         launchSingleTop = true
                         restoreState = true
@@ -119,7 +119,11 @@ fun GearBoardNavHost(
     ) {
         composable(Screen.Board.route) {
             BoardScreen(
-                onSettingsClick = { navController.navigate(Screen.Settings.route) }
+                onSettingsClick = {
+                    navController.navigate(Screen.Settings.route) {
+                        launchSingleTop = true
+                    }
+                }
             )
         }
         composable(Screen.Connect.route) { ConnectScreen() }

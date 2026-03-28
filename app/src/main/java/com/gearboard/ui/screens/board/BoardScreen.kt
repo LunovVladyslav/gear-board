@@ -44,17 +44,17 @@ import com.gearboard.domain.model.ControlType
 import com.gearboard.ui.components.AbToggle
 import com.gearboard.ui.components.SectionHeader
 import com.gearboard.ui.theme.GearBoardColors
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Surface
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBarDefaults
-import com.gearboard.ui.screens.connect.ConnectViewModel
-import com.gearboard.ui.components.ConnectionDot
-import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
+import com.gearboard.ui.components.ConnectionDot
+import com.gearboard.ui.screens.connect.ConnectViewModel
+import com.gearboard.ui.theme.GearBoardDimensions
 
 /**
  * BoardScreen — the main performance screen.
@@ -101,21 +101,34 @@ fun BoardScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "GEARBOARD",
-                            color = GearBoardColors.Accent,
-                            fontSize = 14.sp,
-                            letterSpacing = 3.sp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                color = GearBoardColors.Surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(GearBoardDimensions.TopBarHeight)
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Left: app name
+                    Text(
+                        text = "GEARBOARD",
+                        color = GearBoardColors.Accent,
+                        fontSize = 12.sp,
+                        letterSpacing = 3.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    // Center: MIDI channel chip + dropdown
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
                         MidiChannelChip(
                             channel = globalMidiChannel,
                             onClick = { showChannelMenu = true }
                         )
-
                         DropdownMenu(
                             expanded = showChannelMenu,
                             onDismissRequest = { showChannelMenu = false },
@@ -139,18 +152,28 @@ fun BoardScreen(
                             }
                         }
                     }
-                },
-                actions = {
-                    ConnectionDot(state = connectionState)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, "Settings", tint = GearBoardColors.TextSecondary)
+                    // Right: connection dot + settings gear
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ConnectionDot(state = connectionState)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        IconButton(
+                            onClick = onSettingsClick,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = GearBoardColors.TextSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = GearBoardColors.Surface
-                )
-            )
+                }
+            }
         }
     ) { innerPadding ->
         LazyColumn(

@@ -70,7 +70,6 @@ fun SettingsScreen(
     connectionViewModel: ConnectionViewModel = hiltViewModel()
 ) {
     // Settings state
-    val midiChannel by settingsViewModel.midiChannel.collectAsStateWithLifecycle()
     val sendOnChange by settingsViewModel.sendOnChange.collectAsStateWithLifecycle()
     val controlSize by settingsViewModel.controlSize.collectAsStateWithLifecycle()
     val hapticEnabled by settingsViewModel.hapticEnabled.collectAsStateWithLifecycle()
@@ -254,27 +253,6 @@ fun SettingsScreen(
         // MIDI SECTION
         // ═══════════════════════════════════════
         item { Spacer(Modifier.height(4.dp)); SectionLabel("MIDI") }
-
-        item {
-            SettingRow(title = "MIDI Channel", subtitle = "Channel ${midiChannel + 1}") {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    (0..15).forEach { ch ->
-                        val isSelected = midiChannel == ch
-                        Text(
-                            text = "${ch + 1}",
-                            color = if (isSelected) GearBoardColors.TextOnAccent else GearBoardColors.TextSecondary,
-                            fontSize = 10.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(if (isSelected) GearBoardColors.Accent else GearBoardColors.SurfaceElevated)
-                                .clickable { settingsViewModel.setMidiChannel(ch) }
-                                .padding(horizontal = 6.dp, vertical = 3.dp)
-                        )
-                    }
-                }
-            }
-        }
 
         item {
             ToggleSettingRow(

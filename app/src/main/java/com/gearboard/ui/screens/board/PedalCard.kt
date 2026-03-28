@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -40,6 +41,8 @@ import com.gearboard.ui.components.GearToggle
 import com.gearboard.ui.components.ToggleVariant
 import com.gearboard.ui.theme.GearBoardColors
 import com.gearboard.ui.theme.GearBoardDimensions
+import androidx.compose.runtime.CompositionLocalProvider
+import com.gearboard.ui.theme.LocalAccentColor
 
 /**
  * PedalCard — displays a ControlBlock (pedal) with arbitrary controls.
@@ -63,127 +66,151 @@ fun PedalCard(
     onReorder: (List<ControlType>) -> Unit,
     onRename: () -> Unit,
     onRemove: () -> Unit,
+    onCustomize: () -> Unit = {},
     onAbSwitch: (AbSlot) -> Unit = {},
     onBadgeTap: (ControlType) -> Unit = {},
     modifier: Modifier = Modifier,
     controlScale: Float = 1.0f
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val accentColor = androidx.compose.ui.graphics.Color(block.appearance.accentColor)
 
-    Column(
-        modifier = modifier
-            .width(GearBoardDimensions.PedalCardWidth)
-            .clip(RoundedCornerShape(GearBoardDimensions.RadiusM))
-            .background(GearBoardColors.Surface)
-            .border(
-                width = GearBoardDimensions.BorderThin,
-                color = if (block.enabled) GearBoardColors.BorderAccent.copy(alpha = 0.3f) else GearBoardColors.BorderDefault,
-                shape = RoundedCornerShape(GearBoardDimensions.RadiusM)
-            )
-            .padding(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Header: name + menu
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+    // Hide UUID if persistence accidentally sets name = id
+    val displayName = if (block.name == block.id || block.name.isBlank()) {
+        block.type.uppercase()
+    } else {
+        block.name.uppercase()
+    }
+
+    CompositionLocalProvider(LocalAccentColor provides accentColor) {
+        Column(
+            modifier = modifier
+                .padding(4.dp)
+                .widthIn(min = GearBoardDimensions.PedalCardWidth)
+                .clip(RoundedCornerShape(GearBoardDimensions.RadiusM))
+                .background(GearBoardColors.Surface)
+                .border(
+                    width = GearBoardDimensions.BorderThin,
+                    color = if (block.enabled) accentColor.copy(alpha = 0.3f) else GearBoardColors.BorderDefault,
+                    shape = RoundedCornerShape(GearBoardDimensions.RadiusM)
+                )
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = block.name.uppercase(),
-                    color = if (block.enabled) GearBoardColors.Accent else GearBoardColors.TextDisabled,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            // Header: name + menu
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val headerFontSize = if (block.appearance.headerStyle == com.gearboard.domain.model.HeaderStyle.BOLD) 15.sp else 12.sp
+
+                Column(modifier = Modifier.weight(1f).padding(end = 4.dp)) {
+                    Text(
+                        text = displayName,
+                        fontSize = headerFontSize,
+                        fontWeight = FontWeight.Bold,
+                        color = if (block.enabled) accentColor else GearBoardColors.TextDisabled,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    if (block.appearance.headerStyle != com.gearboard.domain.model.HeaderStyle.MINIMAL && block.type.isNotBlank() && block.name != block.id && block.type.uppercase() != displayName) {
+                        Text(
+                            text = block.type.uppercase(),
+                            fontSize = 9.sp,
+                            color = GearBoardColors.TextSecondary,
+                            letterSpacing = 1.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                // A/B toggle
+                AbToggle(
+                    currentSlot = block.abSlot,
+                    onSlotSelected = onAbSwitch
                 )
-                Text(
-                    text = block.type.uppercase(),
-                    color = GearBoardColors.TextDisabled,
-                    fontSize = 9.sp,
-                    letterSpacing = 1.sp
-                )
+
+                // Context menu
+                IconButton(
+                    onClick = { showMenu = true },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        "Menu",
+                        tint = GearBoardColors.TextSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Customize", color = GearBoardColors.TextPrimary, fontSize = 13.sp) },
+                        onClick = { showMenu = false; onCustomize() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Rename", color = GearBoardColors.TextPrimary, fontSize = 13.sp) },
+                        onClick = { showMenu = false; onRename() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Add Control", color = GearBoardColors.TextPrimary, fontSize = 13.sp) },
+                        onClick = { showMenu = false; onAddControl() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete Block", color = GearBoardColors.DangerText, fontSize = 13.sp) },
+                        onClick = { showMenu = false; onRemove() }
+                    )
+                }
             }
 
-            // A/B toggle
-            AbToggle(
-                currentSlot = block.abSlot,
-                onSlotSelected = onAbSwitch
+            // Controls
+            RenderControlList(
+                controls = block.controls,
+                onKnobValueChange = onKnobValueChange,
+                onToggle = onToggle,
+                onTap = onTap,
+                onSelectorChange = onSelectorChange,
+                onFaderValueChange = onFaderValueChange,
+                onPresetPrev = onPresetPrev,
+                onPresetNext = onPresetNext,
+                onPadDown = onPadDown,
+                onPadUp = onPadUp,
+                onLongPress = onEditControl,
+                onBadgeTap = onBadgeTap,
+                onReorder = onReorder,
+                enabled = block.enabled,
+                controlScale = controlScale,
+                layoutMode = block.layoutMode
             )
 
-            // Context menu
+            // + Add control (small inline)
             IconButton(
-                onClick = { showMenu = true },
-                modifier = Modifier.size(24.dp)
+                onClick = onAddControl,
+                modifier = Modifier.size(28.dp)
             ) {
                 Icon(
-                    Icons.Default.MoreVert,
-                    "Menu",
-                    tint = GearBoardColors.TextSecondary,
+                    Icons.Default.Add,
+                    "Add control",
+                    tint = accentColor.copy(alpha = 0.6f),
                     modifier = Modifier.size(16.dp)
                 )
             }
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Rename", color = GearBoardColors.TextPrimary, fontSize = 13.sp) },
-                    onClick = { showMenu = false; onRename() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Add Control", color = GearBoardColors.TextPrimary, fontSize = 13.sp) },
-                    onClick = { showMenu = false; onAddControl() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Delete Block", color = GearBoardColors.DangerText, fontSize = 13.sp) },
-                    onClick = { showMenu = false; onRemove() }
-                )
-            }
-        }
 
-        // Controls
-        RenderControlList(
-            controls = block.controls,
-            onKnobValueChange = onKnobValueChange,
-            onToggle = onToggle,
-            onTap = onTap,
-            onSelectorChange = onSelectorChange,
-            onFaderValueChange = onFaderValueChange,
-            onPresetPrev = onPresetPrev,
-            onPresetNext = onPresetNext,
-            onPadDown = onPadDown,
-            onPadUp = onPadUp,
-            onLongPress = onEditControl,
-            onBadgeTap = onBadgeTap,
-            onReorder = onReorder,
-            enabled = block.enabled,
-            controlScale = controlScale
-        )
-
-        // + Add control (small inline)
-        IconButton(
-            onClick = onAddControl,
-            modifier = Modifier.size(28.dp)
-        ) {
-            Icon(
-                Icons.Default.Add,
-                "Add control",
-                tint = GearBoardColors.Accent.copy(alpha = 0.6f),
-                modifier = Modifier.size(16.dp)
+            // Enable/disable stomp
+            Spacer(Modifier.height(4.dp))
+            GearToggle(
+                label = if (block.enabled) "ON" else "OFF",
+                enabled = block.enabled,
+                onToggle = onToggleEnabled,
+                variant = ToggleVariant.STOMP
             )
         }
-
-        // Enable/disable stomp
-        Spacer(Modifier.height(4.dp))
-        GearToggle(
-            label = if (block.enabled) "ON" else "OFF",
-            enabled = block.enabled,
-            onToggle = onToggleEnabled,
-            variant = ToggleVariant.STOMP
-        )
     }
 }

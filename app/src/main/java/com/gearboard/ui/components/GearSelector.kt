@@ -3,7 +3,8 @@ package com.gearboard.ui.components
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gearboard.ui.theme.GearBoardColors
 import com.gearboard.ui.theme.GearBoardDimensions
+import com.gearboard.ui.theme.LocalAccentColor
 
 /**
  * GearSelector — horizontal row of position buttons.
@@ -30,15 +32,18 @@ import com.gearboard.ui.theme.GearBoardDimensions
  *
  * CC value distribution: value = (index * 127) / (positions.size - 1)
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GearSelector(
     label: String,
     positions: List<String>,
     selectedIndex: Int,
     onPositionSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLongPress: (() -> Unit)? = null
 ) {
     val view = LocalView.current
+    val accentColor = LocalAccentColor.current
 
     Column(
         modifier = modifier,
@@ -76,7 +81,7 @@ fun GearSelector(
         ) {
             positions.forEachIndexed { index, posLabel ->
                 val isSelected = index == selectedIndex
-                val bgColor = if (isSelected) GearBoardColors.Accent else GearBoardColors.SurfaceElevated
+                val bgColor = if (isSelected) accentColor else GearBoardColors.SurfaceElevated
                 val txtColor = if (isSelected) GearBoardColors.TextOnAccent else GearBoardColors.TextPrimary
 
                 Text(
@@ -95,10 +100,16 @@ fun GearSelector(
                             )
                         )
                         .background(bgColor)
-                        .clickable {
-                            onPositionSelected(index)
-                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                        }
+                        .combinedClickable(
+                            onClick = {
+                                onPositionSelected(index)
+                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                            },
+                            onLongClick = {
+                                onLongPress?.invoke()
+                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            }
+                        )
                         .padding(horizontal = 12.dp, vertical = 10.dp)
                 )
             }

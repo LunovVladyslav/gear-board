@@ -80,7 +80,8 @@ fun SettingsScreen(
 
     // Connection state
     val connectionState by connectionViewModel.connectionState.collectAsStateWithLifecycle()
-    val usbDevices by connectionViewModel.availableDevices.collectAsStateWithLifecycle()
+    val allDevices by connectionViewModel.availableDevices.collectAsStateWithLifecycle()
+    val usbDevices = allDevices.filter { connectionViewModel.getDeviceType(it) == ConnectionType.USB }
     val peripheralState by connectionViewModel.peripheralState.collectAsStateWithLifecycle()
     val showBleScanSheet by connectionViewModel.showBleScanSheet.collectAsStateWithLifecycle()
     val isScanning by connectionViewModel.isScanning.collectAsStateWithLifecycle()

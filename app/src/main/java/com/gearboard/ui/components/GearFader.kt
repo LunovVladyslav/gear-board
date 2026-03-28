@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gearboard.domain.model.FaderOrientation
 import com.gearboard.ui.theme.GearBoardColors
+import com.gearboard.ui.theme.LocalAccentColor
 
 /**
  * GearFader — vertical or horizontal fader/slider drawn with Canvas.
@@ -55,6 +56,7 @@ fun GearFader(
     val view = LocalView.current
     var dragAccumulator by remember { mutableFloatStateOf(0f) }
     var lastHapticStep by remember { mutableIntStateOf((value * 20).toInt()) }
+    val accentColor = LocalAccentColor.current
 
     val isVertical = orientation == FaderOrientation.VERTICAL
     val trackWidth = 40.dp
@@ -128,7 +130,7 @@ fun GearFader(
                 // Active track (from bottom to thumb)
                 val thumbY = trackBottom - (value * (trackBottom - trackTop))
                 drawLine(
-                    color = GearBoardColors.Accent.copy(alpha = 0.4f),
+                    color = accentColor.copy(alpha = 0.4f),
                     start = Offset(trackX, trackBottom),
                     end = Offset(trackX, thumbY),
                     strokeWidth = trackLineWidth,
@@ -137,7 +139,7 @@ fun GearFader(
 
                 // Thumb
                 drawRoundRect(
-                    color = GearBoardColors.Accent,
+                    color = accentColor,
                     topLeft = Offset(trackX - thumbWidth / 2f, thumbY - thumbHeight / 2f),
                     size = Size(thumbWidth, thumbHeight),
                     cornerRadius = CornerRadius(4f, 4f)
@@ -232,7 +234,7 @@ fun GearFader(
                 // Active track
                 val thumbX = trackLeft + (value * (trackRight - trackLeft))
                 drawLine(
-                    color = GearBoardColors.Accent.copy(alpha = 0.4f),
+                    color = accentColor.copy(alpha = 0.4f),
                     start = Offset(trackLeft, trackY),
                     end = Offset(thumbX, trackY),
                     strokeWidth = trackLineWidth,
@@ -241,7 +243,7 @@ fun GearFader(
 
                 // Thumb (vertical rectangle for horizontal fader)
                 drawRoundRect(
-                    color = GearBoardColors.Accent,
+                    color = accentColor,
                     topLeft = Offset(thumbX - thumbHeight / 2f, trackY - thumbWidth / 2f),
                     size = Size(thumbHeight, thumbWidth),
                     cornerRadius = CornerRadius(4f, 4f)

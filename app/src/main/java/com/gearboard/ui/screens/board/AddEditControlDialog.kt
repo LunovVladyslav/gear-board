@@ -36,9 +36,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.gearboard.domain.model.ControlType
 import com.gearboard.domain.model.DisplayFormat
 import com.gearboard.domain.model.FaderOrientation
+import com.gearboard.domain.model.ControlSize
+import com.gearboard.domain.model.ControlType
 import com.gearboard.ui.theme.GearBoardColors
 
 private enum class ControlKind(val display: String) {
@@ -139,6 +140,10 @@ fun AddEditControlDialog(
         )
     }
 
+    var controlSize by remember {
+        mutableStateOf(existingControl?.size ?: ControlSize.MEDIUM)
+    }
+
     // Validation
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val labelError = when {
@@ -235,6 +240,31 @@ fun AddEditControlDialog(
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             )
                         }
+                    }
+                }
+
+                // Control Size selector
+                Text(
+                    "CONTROL SIZE",
+                    color = GearBoardColors.TextSecondary,
+                    fontSize = 10.sp,
+                    letterSpacing = 1.5.sp
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ControlSize.entries.forEach { sz ->
+                        val isSel = controlSize == sz
+                        Text(
+                            text = sz.name,
+                            color = if (isSel) GearBoardColors.TextOnAccent else GearBoardColors.TextPrimary,
+                            fontSize = 11.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (isSel) GearBoardColors.Accent else GearBoardColors.SurfaceElevated
+                                )
+                                .clickable { controlSize = sz }
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
                     }
                 }
 
@@ -424,7 +454,8 @@ fun AddEditControlDialog(
                         noteNumber = noteNum ?: 36,
                         isHorizontal = isHorizontal,
                         pulseMode = pulseMode,
-                        displayFormat = displayFormat
+                        displayFormat = displayFormat,
+                        size = controlSize
                     )
                     onConfirm(control)
                 },
@@ -479,33 +510,34 @@ private fun buildControl(
     noteNumber: Int,
     isHorizontal: Boolean,
     pulseMode: Boolean,
-    displayFormat: DisplayFormat = DisplayFormat.ZERO_TO_TEN
+    displayFormat: DisplayFormat = DisplayFormat.ZERO_TO_TEN,
+    size: ControlSize = ControlSize.MEDIUM
 ): ControlType {
     val id = existingId ?: java.util.UUID.randomUUID().toString()
     return when (kind) {
         ControlKind.KNOB -> ControlType.Knob(
             id = id, label = label, ccNumber = ccNumber, midiChannel = midiChannel,
-            displayFormat = displayFormat
+            displayFormat = displayFormat, size = size
         )
         ControlKind.TOGGLE -> ControlType.Toggle(
-            id = id, label = label, ccNumber = ccNumber, midiChannel = midiChannel, pulseMode = pulseMode
+            id = id, label = label, ccNumber = ccNumber, midiChannel = midiChannel, pulseMode = pulseMode, size = size
         )
         ControlKind.TAP -> ControlType.Tap(
-            id = id, label = label, ccNumber = ccNumber, midiChannel = midiChannel
+            id = id, label = label, ccNumber = ccNumber, midiChannel = midiChannel, size = size
         )
         ControlKind.SELECTOR -> ControlType.Selector(
-            id = id, label = label, ccNumber = ccNumber, midiChannel = midiChannel, positions = positions
+            id = id, label = label, ccNumber = ccNumber, midiChannel = midiChannel, positions = positions, size = size
         )
         ControlKind.FADER -> ControlType.Fader(
             id = id, label = label, ccNumber = ccNumber, midiChannel = midiChannel,
             orientation = if (isHorizontal) FaderOrientation.HORIZONTAL else FaderOrientation.VERTICAL,
-            displayFormat = displayFormat
+            displayFormat = displayFormat, size = size
         )
         ControlKind.PRESET_NAV -> ControlType.PresetNav(
-            id = id, label = label, midiChannel = midiChannel
+            id = id, label = label, midiChannel = midiChannel, size = size
         )
         ControlKind.PAD -> ControlType.Pad(
-            id = id, label = label, noteNumber = noteNumber, midiChannel = midiChannel
+            id = id, label = label, noteNumber = noteNumber, midiChannel = midiChannel, size = size
         )
     }
 }

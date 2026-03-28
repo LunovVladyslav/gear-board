@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gearboard.ui.theme.GearBoardColors
 import com.gearboard.ui.theme.GearBoardDimensions
+import com.gearboard.ui.theme.LocalAccentColor
 
 /**
  * GearPad — MIDI note pad.
@@ -44,9 +45,10 @@ fun GearPad(
 ) {
     val view = LocalView.current
     var isPressed by remember { mutableStateOf(false) }
+    val accentColor = LocalAccentColor.current
 
     val bgColor by animateColorAsState(
-        targetValue = if (isPressed) GearBoardColors.Accent else GearBoardColors.SurfaceElevated,
+        targetValue = if (isPressed) accentColor else GearBoardColors.SurfaceElevated,
         animationSpec = tween(50),
         label = "padPress"
     )
@@ -65,7 +67,7 @@ fun GearPad(
             .background(bgColor)
             .border(
                 width = GearBoardDimensions.BorderMedium,
-                color = if (isPressed) GearBoardColors.Accent else GearBoardColors.BorderDefault,
+                color = if (isPressed) accentColor else GearBoardColors.BorderDefault,
                 shape = RoundedCornerShape(GearBoardDimensions.RadiusL)
             )
             .pointerInput(Unit) {

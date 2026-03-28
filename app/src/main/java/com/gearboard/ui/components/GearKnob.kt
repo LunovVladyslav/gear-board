@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.gearboard.ui.theme.GearBoardColors
 import com.gearboard.ui.theme.GearBoardDimensions
+import com.gearboard.ui.theme.LocalAccentColor
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -60,6 +62,7 @@ fun GearKnob(
     onLongPress: (() -> Unit)? = null
 ) {
     val view = LocalView.current
+    val accentColor = LocalAccentColor.current
 
     // Track haptic feedback step (fire every 5% change)
     var lastHapticStep by remember { mutableIntStateOf((value * 20).toInt()) }
@@ -70,9 +73,9 @@ fun GearKnob(
     val effectiveSize = maxOf(size, GearBoardDimensions.KnobMinSize)
 
     Column(
-        modifier = modifier,
+        modifier = modifier.padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Canvas(
             modifier = Modifier
@@ -166,7 +169,7 @@ fun GearKnob(
             val sweepAngle = value * GearBoardDimensions.KNOB_TOTAL_ANGLE
             if (sweepAngle > 0.5f) {
                 drawArc(
-                    color = GearBoardColors.KnobArcActive,
+                    color = accentColor,
                     startAngle = 135f,
                     sweepAngle = sweepAngle,
                     useCenter = false,
@@ -188,7 +191,7 @@ fun GearKnob(
             val endY = centerY + lineEndRadius * sin(angleRad)
 
             drawLine(
-                color = if (enabled) GearBoardColors.Accent else GearBoardColors.TextDisabled,
+                color = if (enabled) accentColor else GearBoardColors.TextDisabled,
                 start = Offset(startX, startY),
                 end = Offset(endX, endY),
                 strokeWidth = GearBoardDimensions.KnobIndicatorWidth.toPx(),
@@ -197,7 +200,7 @@ fun GearKnob(
 
             // --- Center dot ---
             drawCircle(
-                color = if (enabled) GearBoardColors.Accent.copy(alpha = 0.3f) else GearBoardColors.TextDisabled.copy(alpha = 0.3f),
+                color = if (enabled) accentColor.copy(alpha = 0.3f) else GearBoardColors.TextDisabled.copy(alpha = 0.3f),
                 radius = 3f,
                 center = Offset(centerX, centerY)
             )

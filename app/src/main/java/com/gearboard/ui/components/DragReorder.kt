@@ -6,8 +6,10 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -129,6 +131,125 @@ fun <T> ReorderableColumn(
                     }
             ) {
                 itemContent(index, item)
+            }
+        }
+    }
+}
+
+/**
+ * ReorderableGrid — a horizonal wrapping grid (Row of Columns) whose children can be reordered via drag in 2D.
+ */
+@Composable
+fun <T> ReorderableGrid(
+    items: List<T>,
+    onReorder: (List<T>) -> Unit,
+    modifier: Modifier = Modifier,
+    maxRows: Int = 3,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(8.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(8.dp),
+    itemContent: @Composable (index: Int, item: T) -> Unit
+) {
+    if (items.isEmpty()) return
+
+    val view = LocalView.current
+    val density = LocalDensity.current
+
+    var draggedIndex by remember { mutableIntStateOf(-1) }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    var itemCenters by remember { mutableStateOf(mapOf<Int, Offset>()) }
+    var currentOrder by remember(items) { mutableStateOf(items.toList()) }
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = horizontalArrangement
+    ) {
+        currentOrder.chunked(maxRows).forEachIndexed { chunkIndex, columnItems ->
+            Column(verticalArrangement = verticalArrangement) {
+                columnItems.forEachIndexed { rowIndex, item ->
+                    val index = chunkIndex * maxRows + rowIndex
+                    val isDragged = draggedIndex == index
+                    val elevation by animateDpAsState(
+                        targetValue = if (isDragged) 8.dp else 0.dp,
+                        label = "dragElevation"
+                    )
+
+                    Surface(
+                        shadowElevation = elevation,
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isDragged) GearBoardColors.SurfaceElevated else GearBoardColors.Surface,
+                        modifier = Modifier
+                            .zIndex(if (isDragged) 1f else 0f)
+                            .offset {
+                                if (isDragged) {
+                                    IntOffset(dragOffset.x.roundToInt(), dragOffset.y.roundToInt())
+                                } else {
+                                    IntOffset.Zero
+                                }
+                            }
+                            .onGloballyPositioned { coords ->
+                                val center = coords.localToWindow(Offset(coords.size.width / 2f, coords.size.height / 2f))
+                                itemCenters = itemCenters + (index to center)
+                            }
+                            .pointerInput(index) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        draggedIndex = index
+                                        dragOffset = Offset.Zero
+                                        currentOrder = items.toList()
+                                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        dragOffset += dragAmount
+
+                                        if (draggedIndex >= 0) {
+                                            val currentCenter = itemCenters[draggedIndex] ?: Offset.Zero
+                                            val draggedCenter = currentCenter + dragOffset
+
+                                            var closestIndex = draggedIndex
+                                            var minDistance = Float.MAX_VALUE
+
+                                            itemCenters.forEach { (i, center) ->
+                                                if (i != draggedIndex) {
+                                                    val dist = (center - draggedCenter).getDistance()
+                                                    if (dist < minDistance && dist < with(density) { 60.dp.toPx() }) {
+                                                        minDistance = dist
+                                                        closestIndex = i
+                                                    }
+                                                }
+                                            }
+
+                                            if (closestIndex != draggedIndex) {
+                                                val mutableList = currentOrder.toMutableList()
+                                                val movedItem = mutableList.removeAt(draggedIndex)
+                                                mutableList.add(closestIndex, movedItem)
+                                                currentOrder = mutableList
+
+                                                val oldCenter = itemCenters[draggedIndex] ?: Offset.Zero
+                                                val newCenter = itemCenters[closestIndex] ?: Offset.Zero
+                                                dragOffset += (oldCenter - newCenter)
+
+                                                draggedIndex = closestIndex
+                                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                            }
+                                        }
+                                    },
+                                    onDragEnd = {
+                                        onReorder(currentOrder)
+                                        draggedIndex = -1
+                                        dragOffset = Offset.Zero
+                                    },
+                                    onDragCancel = {
+                                        currentOrder = items.toList()
+                                        draggedIndex = -1
+                                        dragOffset = Offset.Zero
+                                    }
+                                )
+                            }
+                    ) {
+                        itemContent(index, item)
+                    }
+                }
             }
         }
     }

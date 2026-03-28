@@ -165,7 +165,7 @@ fun UnmappedBadge(
                     .offset(x = (-2).dp, y = 2.dp)
                     .size(18.dp)
                     .clip(CircleShape)
-                    .background(GearBoardColors.Accent)
+                    .background(com.gearboard.ui.theme.LocalAccentColor.current)
                     .clickable(onClick = onBadgeTap)
                     .padding(top = 1.dp)
                     .align(androidx.compose.ui.Alignment.TopEnd)

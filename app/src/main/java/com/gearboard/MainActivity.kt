@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.gearboard.data.repository.SettingsRepository
 import com.gearboard.ui.components.ConnectionState
@@ -60,9 +61,12 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+                val showGlobalTopBar = currentRoute != Screen.Board.route && currentRoute != Screen.GuidedSetup.route
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    topBar = { ConnectionStatusBar(state = connectionState) },
+                    topBar = { if (showGlobalTopBar) ConnectionStatusBar(state = connectionState) },
                     bottomBar = { GearBoardBottomNav(navController) }
                 ) { innerPadding ->
                     Column(

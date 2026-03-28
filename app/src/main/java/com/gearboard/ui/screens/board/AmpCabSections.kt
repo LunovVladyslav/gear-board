@@ -1,5 +1,6 @@
 package com.gearboard.ui.screens.board
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material3.AlertDialog
@@ -49,6 +51,7 @@ fun AmpSection(
     onEditControl: (ControlType) -> Unit,
     onAddControl: () -> Unit,
     onClearAll: () -> Unit,
+    onCustomize: () -> Unit,
     onBadgeTap: (ControlType) -> Unit = {},
     modifier: Modifier = Modifier,
     controlScale: Float = 1.0f
@@ -73,7 +76,9 @@ fun AmpSection(
             onLongPress = onEditControl,
             onBadgeTap = onBadgeTap,
             enabled = amp.enabled,
-            controlScale = controlScale
+            layoutMode = amp.layoutMode,
+            controlScale = controlScale,
+            modifier = Modifier.horizontalScroll(rememberScrollState())
         )
 
         // Buttons row
@@ -90,9 +95,21 @@ fun AmpSection(
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(Icons.Default.Add, null, modifier = Modifier.size(14.dp))
+                Icon(Icons.Default.Add, null, modifier = Modifier.size(12.dp))
                 Spacer(Modifier.padding(start = 4.dp))
-                Text("ADD CONTROL", fontSize = 10.sp, letterSpacing = 1.sp)
+                Text("ADD", fontSize = 10.sp, letterSpacing = 1.sp)
+            }
+
+            Button(
+                onClick = onCustomize,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = GearBoardColors.SurfaceVariant,
+                    contentColor = GearBoardColors.TextPrimary
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("CUSTOMIZE", fontSize = 10.sp, letterSpacing = 1.sp)
             }
 
             if (amp.controls.isNotEmpty()) {
@@ -151,6 +168,7 @@ fun CabSection(
     onEditControl: (ControlType) -> Unit,
     onAddControl: () -> Unit,
     onClearAll: () -> Unit,
+    onCustomize: () -> Unit,
     onBadgeTap: (ControlType) -> Unit = {},
     modifier: Modifier = Modifier,
     controlScale: Float = 1.0f
@@ -175,7 +193,9 @@ fun CabSection(
             onLongPress = onEditControl,
             onBadgeTap = onBadgeTap,
             enabled = cabinet.enabled,
-            controlScale = controlScale
+            layoutMode = cabinet.layoutMode,
+            controlScale = controlScale,
+            modifier = Modifier.horizontalScroll(rememberScrollState())
         )
 
         Row(
@@ -191,9 +211,21 @@ fun CabSection(
                 ),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(Icons.Default.Add, null, modifier = Modifier.size(14.dp))
+                Icon(Icons.Default.Add, null, modifier = Modifier.size(12.dp))
                 Spacer(Modifier.padding(start = 4.dp))
-                Text("ADD CONTROL", fontSize = 10.sp, letterSpacing = 1.sp)
+                Text("ADD", fontSize = 10.sp, letterSpacing = 1.sp)
+            }
+
+            Button(
+                onClick = onCustomize,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = GearBoardColors.SurfaceVariant,
+                    contentColor = GearBoardColors.TextPrimary
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("CUSTOMIZE", fontSize = 10.sp, letterSpacing = 1.sp)
             }
 
             if (cabinet.controls.isNotEmpty()) {

@@ -50,6 +50,9 @@ class Converters {
         override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext): ControlType {
             val jsonObj = json.asJsonObject
             val typeName = jsonObj.get("_type")?.asString ?: "Knob"
+            if (!jsonObj.has("size")) {
+                jsonObj.addProperty("size", "MEDIUM")
+            }
             val clazz = when (typeName) {
                 "Knob" -> ControlType.Knob::class.java
                 "Toggle" -> ControlType.Toggle::class.java

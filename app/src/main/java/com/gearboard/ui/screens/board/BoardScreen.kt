@@ -14,11 +14,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +32,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +44,17 @@ import com.gearboard.domain.model.ControlType
 import com.gearboard.ui.components.AbToggle
 import com.gearboard.ui.components.SectionHeader
 import com.gearboard.ui.theme.GearBoardColors
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBarDefaults
+import com.gearboard.ui.screens.connect.ConnectViewModel
+import com.gearboard.ui.components.ConnectionDot
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 
 /**
  * BoardScreen — the main performance screen.
@@ -47,12 +65,17 @@ import com.gearboard.ui.theme.GearBoardColors
  * 3. Cabinet (single block with controls)
  * 4. Effects (horizontal scroll with blocks)
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoardScreen(
-    viewModel: BoardViewModel = hiltViewModel()
+    viewModel: BoardViewModel = hiltViewModel(),
+    connectViewModel: ConnectViewModel = hiltViewModel(),
+    onSettingsClick: () -> Unit = {}
 ) {
+    val connectionState by connectViewModel.connectionState.collectAsStateWithLifecycle()
     val boardState by viewModel.boardState.collectAsStateWithLifecycle()
     val controlScale by viewModel.controlSize.collectAsStateWithLifecycle()
+    val globalMidiChannel by viewModel.globalMidiChannel.collectAsStateWithLifecycle()
     val pedalsExpanded by viewModel.pedalsExpanded.collectAsStateWithLifecycle()
     val ampExpanded by viewModel.ampExpanded.collectAsStateWithLifecycle()
     val cabExpanded by viewModel.cabExpanded.collectAsStateWithLifecycle()
@@ -65,6 +88,7 @@ fun BoardScreen(
     var addControlTarget by remember { mutableStateOf<AddControlTarget?>(null) }
     var editControlState by remember { mutableStateOf<EditControlState?>(null) }
     var renameTarget by remember { mutableStateOf<RenameTarget?>(null) }
+    var customizeTarget by remember { mutableStateOf<CustomizeTarget?>(null) }
     var mappingControl by remember { mutableStateOf<MappingControlState?>(null) }
 
     // Add control dialog for amp/cab
@@ -73,14 +97,70 @@ fun BoardScreen(
     var editAmpControl by remember { mutableStateOf<ControlType?>(null) }
     var editCabControl by remember { mutableStateOf<ControlType?>(null) }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(GearBoardColors.Background),
-        contentPadding = PaddingValues(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // === PEDALS SECTION ===
+    var showChannelMenu by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "GEARBOARD",
+                            color = GearBoardColors.Accent,
+                            fontSize = 14.sp,
+                            letterSpacing = 3.sp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        MidiChannelChip(
+                            channel = globalMidiChannel,
+                            onClick = { showChannelMenu = true }
+                        )
+
+                        DropdownMenu(
+                            expanded = showChannelMenu,
+                            onDismissRequest = { showChannelMenu = false },
+                            modifier = Modifier.background(GearBoardColors.Surface)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("OMNI (ALL)", color = GearBoardColors.TextPrimary) },
+                                onClick = {
+                                    viewModel.setGlobalMidiChannel(0)
+                                    showChannelMenu = false
+                                }
+                            )
+                            for (i in 1..16) {
+                                DropdownMenuItem(
+                                    text = { Text("CH $i", color = GearBoardColors.TextPrimary) },
+                                    onClick = {
+                                        viewModel.setGlobalMidiChannel(i)
+                                        showChannelMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                },
+                actions = {
+                    ConnectionDot(state = connectionState)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, "Settings", tint = GearBoardColors.TextSecondary)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = GearBoardColors.Surface
+                )
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(GearBoardColors.Background)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(bottom = 88.dp, top = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         item {
             SectionHeader(
                 title = "Pedals",
@@ -130,6 +210,9 @@ fun BoardScreen(
                                     },
                                     onRename = {
                                         renameTarget = RenameTarget(true, block.id, block.name)
+                                    },
+                                    onCustomize = {
+                                        customizeTarget = CustomizeTarget.Block(true, block)
                                     },
                                     onRemove = { viewModel.removePedalBlock(block.id) },
                                     onAbSwitch = { slot -> viewModel.switchBlockAbSlot(true, block.id, slot) },
@@ -189,6 +272,7 @@ fun BoardScreen(
                     onEditControl = { control -> editAmpControl = control },
                     onAddControl = { showAddAmpControl = true },
                     onClearAll = { viewModel.clearAmpControls() },
+                    onCustomize = { customizeTarget = CustomizeTarget.Amp(boardState.amp) },
                     onBadgeTap = { control ->
                         mappingControl = MappingControlState(control, section = "amp")
                     },
@@ -239,6 +323,7 @@ fun BoardScreen(
                     onEditControl = { control -> editCabControl = control },
                     onAddControl = { showAddCabControl = true },
                     onClearAll = { viewModel.clearCabControls() },
+                    onCustomize = { customizeTarget = CustomizeTarget.Cab(boardState.cabinet) },
                     onBadgeTap = { control ->
                         mappingControl = MappingControlState(control, section = "cab")
                     },
@@ -299,6 +384,9 @@ fun BoardScreen(
                                     onRename = {
                                         renameTarget = RenameTarget(false, block.id, block.name)
                                     },
+                                    onCustomize = {
+                                        customizeTarget = CustomizeTarget.Block(false, block)
+                                    },
                                     onRemove = { viewModel.removeEffectBlock(block.id) },
                                     onAbSwitch = { slot -> viewModel.switchBlockAbSlot(false, block.id, slot) },
                                     onBadgeTap = { control ->
@@ -315,6 +403,7 @@ fun BoardScreen(
                 }
             }
         }
+    }
     }
 
     // --- Dialogs & Bottom Sheets ---
@@ -338,7 +427,7 @@ fun BoardScreen(
     // Add control to block dialog
     addControlTarget?.let { target ->
         AddEditControlDialog(
-            onConfirm = { control ->
+            onConfirm = { control: ControlType ->
                 viewModel.addControlToBlock(target.isPedals, target.blockId, control)
                 addControlTarget = null
             },
@@ -350,7 +439,7 @@ fun BoardScreen(
     editControlState?.let { state ->
         AddEditControlDialog(
             existingControl = state.control,
-            onConfirm = { updated ->
+            onConfirm = { updated: ControlType ->
                 viewModel.updateControlInBlock(state.isPedals, state.blockId, state.control.id, updated)
                 editControlState = null
             },
@@ -432,6 +521,43 @@ fun BoardScreen(
         )
     }
 
+    // Customize block dialog
+    customizeTarget?.let { target ->
+        val name = when (target) {
+            is CustomizeTarget.Block -> if (target.block.name == target.block.id || target.block.name.isBlank()) target.block.type else target.block.name
+            is CustomizeTarget.Amp -> "Amplifier"
+            is CustomizeTarget.Cab -> "Cabinet"
+        }
+        val app = when (target) {
+            is CustomizeTarget.Block -> target.block.appearance
+            is CustomizeTarget.Amp -> target.settings.appearance
+            is CustomizeTarget.Cab -> target.settings.appearance
+        }
+        val lay = when (target) {
+            is CustomizeTarget.Block -> target.block.layoutMode
+            is CustomizeTarget.Amp -> target.settings.layoutMode
+            is CustomizeTarget.Cab -> target.settings.layoutMode
+        }
+
+        CustomizeBlockDialog(
+            blockName = name,
+            initialAppearance = app,
+            initialLayout = lay,
+            onConfirm = { appearance, layout ->
+                when (target) {
+                    is CustomizeTarget.Block -> {
+                        if (target.isPedals) viewModel.updatePedalBlockAppearance(target.block.id, appearance, layout)
+                        else viewModel.updateEffectBlockAppearance(target.block.id, appearance, layout)
+                    }
+                    is CustomizeTarget.Amp -> viewModel.updateAmpAppearance(appearance, layout)
+                    is CustomizeTarget.Cab -> viewModel.updateCabAppearance(appearance, layout)
+                }
+                customizeTarget = null
+            },
+            onDismiss = { customizeTarget = null }
+        )
+    }
+
     // Onboarding dialog
     if (showOnboarding) {
         OnboardingDialog(
@@ -469,6 +595,13 @@ fun BoardScreen(
 private data class AddControlTarget(val isPedals: Boolean, val blockId: String)
 private data class EditControlState(val isPedals: Boolean, val blockId: String, val control: ControlType)
 private data class RenameTarget(val isPedals: Boolean, val blockId: String, val currentName: String)
+
+private sealed class CustomizeTarget {
+    data class Block(val isPedals: Boolean, val block: com.gearboard.domain.model.ControlBlock) : CustomizeTarget()
+    data class Amp(val settings: com.gearboard.domain.model.AmpSettings) : CustomizeTarget()
+    data class Cab(val settings: com.gearboard.domain.model.CabinetSettings) : CustomizeTarget()
+}
+
 private data class MappingControlState(
     val control: ControlType,
     val isPedals: Boolean = false,
@@ -669,5 +802,26 @@ private fun updateControlCcNumber(control: ControlType, ccNumber: Int): ControlT
         is ControlType.Selector -> control.copy(ccNumber = ccNumber)
         is ControlType.Fader -> control.copy(ccNumber = ccNumber)
         else -> null
+    }
+}
+
+@Composable
+fun MidiChannelChip(channel: Int, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(4.dp),
+        color = GearBoardColors.SurfaceVariant,
+        modifier = Modifier.height(24.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 6.dp)
+        ) {
+            Text(
+                text = if (channel == 0) "OMNI" else "CH $channel",
+                style = MaterialTheme.typography.labelSmall,
+                color = GearBoardColors.TextSecondary
+            )
+        }
     }
 }

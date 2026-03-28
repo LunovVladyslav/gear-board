@@ -117,7 +117,11 @@ fun GearBoardNavHost(
         navController = navController,
         startDestination = startDestination
     ) {
-        composable(Screen.Board.route) { BoardScreen() }
+        composable(Screen.Board.route) {
+            BoardScreen(
+                onSettingsClick = { navController.navigate(Screen.Settings.route) }
+            )
+        }
         composable(Screen.Connect.route) { ConnectScreen() }
         composable(Screen.Presets.route) { PresetScreen() }
         composable(Screen.MidiMap.route) { MidiMapScreen() }

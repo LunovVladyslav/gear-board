@@ -3,6 +3,7 @@ package com.gearboard.data.repository
 import com.gearboard.data.local.dao.ControlItemDao
 import com.gearboard.data.local.entity.ControlItemEntity
 import com.gearboard.domain.model.ControlType
+import com.gearboard.domain.model.ControlSize
 import com.gearboard.domain.model.DisplayFormat
 import com.gearboard.domain.model.FaderOrientation
 import com.gearboard.domain.model.SectionType
@@ -100,11 +101,13 @@ class ControlRepository @Inject constructor(
         return when (entity.controlType) {
             "KNOB" -> {
                 val extra = parseExtra(entity.extraConfig)
+                val size = parseControlSize(extra["size"] as? String)
                 ControlType.Knob(
                     id = entity.id.toString(),
                     label = entity.label,
                     ccNumber = entity.ccNumber,
                     midiChannel = entity.midiChannel,
+                    size = size,
                     defaultValue = (extra["defaultValue"] as? Double)?.toFloat() ?: 0.5f,
                     value = (extra["value"] as? Double)?.toFloat() ?: 0.5f,
                     displayFormat = parseDisplayFormat(extra["displayFormat"] as? String)
@@ -112,23 +115,31 @@ class ControlRepository @Inject constructor(
             }
             "TOGGLE" -> {
                 val extra = parseExtra(entity.extraConfig)
+                val size = parseControlSize(extra["size"] as? String)
                 ControlType.Toggle(
                     id = entity.id.toString(),
                     label = entity.label,
                     ccNumber = entity.ccNumber,
                     midiChannel = entity.midiChannel,
+                    size = size,
                     pulseMode = extra["pulseMode"] as? Boolean ?: true,
                     isOn = extra["isOn"] as? Boolean ?: false
                 )
             }
-            "TAP" -> ControlType.Tap(
-                id = entity.id.toString(),
-                label = entity.label,
-                ccNumber = entity.ccNumber,
-                midiChannel = entity.midiChannel
-            )
+            "TAP" -> {
+                val extra = parseExtra(entity.extraConfig)
+                val size = parseControlSize(extra["size"] as? String)
+                ControlType.Tap(
+                    id = entity.id.toString(),
+                    label = entity.label,
+                    ccNumber = entity.ccNumber,
+                    midiChannel = entity.midiChannel,
+                    size = size
+                )
+            }
             "SELECTOR" -> {
                 val extra = parseExtra(entity.extraConfig)
+                val size = parseControlSize(extra["size"] as? String)
                 @Suppress("UNCHECKED_CAST")
                 val positions = (extra["positions"] as? List<*>)?.map { it.toString() } ?: emptyList()
                 ControlType.Selector(
@@ -136,17 +147,20 @@ class ControlRepository @Inject constructor(
                     label = entity.label,
                     ccNumber = entity.ccNumber,
                     midiChannel = entity.midiChannel,
+                    size = size,
                     positions = positions,
                     selectedIndex = (extra["selectedIndex"] as? Double)?.toInt() ?: 0
                 )
             }
             "FADER" -> {
                 val extra = parseExtra(entity.extraConfig)
+                val size = parseControlSize(extra["size"] as? String)
                 ControlType.Fader(
                     id = entity.id.toString(),
                     label = entity.label,
                     ccNumber = entity.ccNumber,
                     midiChannel = entity.midiChannel,
+                    size = size,
                     defaultValue = (extra["defaultValue"] as? Double)?.toFloat() ?: 0.5f,
                     value = (extra["value"] as? Double)?.toFloat() ?: 0.5f,
                     orientation = if (extra["orientation"] == "HORIZONTAL") FaderOrientation.HORIZONTAL else FaderOrientation.VERTICAL,
@@ -155,20 +169,24 @@ class ControlRepository @Inject constructor(
             }
             "PRESET_NAV" -> {
                 val extra = parseExtra(entity.extraConfig)
+                val size = parseControlSize(extra["size"] as? String)
                 ControlType.PresetNav(
                     id = entity.id.toString(),
                     label = entity.label,
                     midiChannel = entity.midiChannel,
+                    size = size,
                     currentPreset = (extra["currentPreset"] as? Double)?.toInt() ?: 0
                 )
             }
             "PAD" -> {
                 val extra = parseExtra(entity.extraConfig)
+                val size = parseControlSize(extra["size"] as? String)
                 ControlType.Pad(
                     id = entity.id.toString(),
                     label = entity.label,
                     noteNumber = (extra["noteNumber"] as? Double)?.toInt() ?: 0,
                     midiChannel = entity.midiChannel,
+                    size = size,
                     velocity = (extra["velocity"] as? Double)?.toInt() ?: 100
                 )
             }
@@ -188,6 +206,7 @@ class ControlRepository @Inject constructor(
                 ccNumber = control.ccNumber,
                 midiChannel = control.midiChannel,
                 extraConfig = gson.toJson(mapOf(
+                    "size" to control.size.name,
                     "defaultValue" to control.defaultValue,
                     "value" to control.value,
                     "displayFormat" to control.displayFormat.name
@@ -198,6 +217,7 @@ class ControlRepository @Inject constructor(
                 ccNumber = control.ccNumber,
                 midiChannel = control.midiChannel,
                 extraConfig = gson.toJson(mapOf(
+                    "size" to control.size.name,
                     "pulseMode" to control.pulseMode,
                     "isOn" to control.isOn
                 ))
@@ -206,13 +226,16 @@ class ControlRepository @Inject constructor(
                 typeName = "TAP",
                 ccNumber = control.ccNumber,
                 midiChannel = control.midiChannel,
-                extraConfig = ""
+                extraConfig = gson.toJson(mapOf(
+                    "size" to control.size.name
+                ))
             )
             is ControlType.Selector -> EntityFields(
                 typeName = "SELECTOR",
                 ccNumber = control.ccNumber,
                 midiChannel = control.midiChannel,
                 extraConfig = gson.toJson(mapOf(
+                    "size" to control.size.name,
                     "positions" to control.positions,
                     "selectedIndex" to control.selectedIndex
                 ))
@@ -222,6 +245,7 @@ class ControlRepository @Inject constructor(
                 ccNumber = control.ccNumber,
                 midiChannel = control.midiChannel,
                 extraConfig = gson.toJson(mapOf(
+                    "size" to control.size.name,
                     "defaultValue" to control.defaultValue,
                     "value" to control.value,
                     "orientation" to control.orientation.name,
@@ -233,6 +257,7 @@ class ControlRepository @Inject constructor(
                 ccNumber = 0,
                 midiChannel = control.midiChannel,
                 extraConfig = gson.toJson(mapOf(
+                    "size" to control.size.name,
                     "currentPreset" to control.currentPreset
                 ))
             )
@@ -241,6 +266,7 @@ class ControlRepository @Inject constructor(
                 ccNumber = 0,
                 midiChannel = control.midiChannel,
                 extraConfig = gson.toJson(mapOf(
+                    "size" to control.size.name,
                     "noteNumber" to control.noteNumber,
                     "velocity" to control.velocity
                 ))
@@ -263,6 +289,14 @@ class ControlRepository @Inject constructor(
             name?.let { DisplayFormat.valueOf(it) } ?: DisplayFormat.ZERO_TO_TEN
         } catch (_: IllegalArgumentException) {
             DisplayFormat.ZERO_TO_TEN
+        }
+    }
+
+    private fun parseControlSize(name: String?): ControlSize {
+        return try {
+            name?.let { ControlSize.valueOf(it) } ?: ControlSize.MEDIUM
+        } catch (_: IllegalArgumentException) {
+            ControlSize.MEDIUM
         }
     }
 

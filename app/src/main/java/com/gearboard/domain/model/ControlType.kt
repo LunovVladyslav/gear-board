@@ -31,6 +31,12 @@ fun midiToDisplay(midiValue: Int, format: DisplayFormat): String {
     }
 }
 
+enum class ControlSize(val scaleFactor: Float) {
+    SMALL(0.75f),
+    MEDIUM(1.0f),
+    LARGE(1.25f)
+}
+
 /**
  * Unified sealed class for all control primitives in GearBoard.
  * Each subclass represents one type of MIDI control with its configuration.
@@ -39,12 +45,14 @@ sealed class ControlType {
     abstract val id: String
     abstract val label: String
     abstract val midiChannel: Int
+    abstract val size: ControlSize
 
     data class Knob(
         override val id: String = java.util.UUID.randomUUID().toString(),
         override val label: String,
         val ccNumber: Int,
         override val midiChannel: Int = 1,
+        override val size: ControlSize = ControlSize.MEDIUM,
         val defaultValue: Float = 0.5f,  // 0f..1f normalized
         val value: Float = defaultValue,
         val displayFormat: DisplayFormat = DisplayFormat.ZERO_TO_TEN
@@ -55,6 +63,7 @@ sealed class ControlType {
         override val label: String,
         val ccNumber: Int,
         override val midiChannel: Int = 1,
+        override val size: ControlSize = ControlSize.MEDIUM,
         val pulseMode: Boolean = true,   // pulse 127→0 with 50ms delay
         val isOn: Boolean = false
     ) : ControlType()
@@ -63,7 +72,8 @@ sealed class ControlType {
         override val id: String = java.util.UUID.randomUUID().toString(),
         override val label: String,
         val ccNumber: Int,
-        override val midiChannel: Int = 1
+        override val midiChannel: Int = 1,
+        override val size: ControlSize = ControlSize.MEDIUM
         // Stateless — sends CC 127 on each press
     ) : ControlType()
 
@@ -72,6 +82,7 @@ sealed class ControlType {
         override val label: String,
         val ccNumber: Int,
         override val midiChannel: Int = 1,
+        override val size: ControlSize = ControlSize.MEDIUM,
         val positions: List<String>,       // e.g. ["Phase", "Vibe"]
         val selectedIndex: Int = 0
         // CC value = (index * 127) / (positions.size - 1)
@@ -82,6 +93,7 @@ sealed class ControlType {
         override val label: String,
         val ccNumber: Int,
         override val midiChannel: Int = 1,
+        override val size: ControlSize = ControlSize.MEDIUM,
         val defaultValue: Float = 0.5f,
         val value: Float = defaultValue,
         val orientation: FaderOrientation = FaderOrientation.VERTICAL,
@@ -92,6 +104,7 @@ sealed class ControlType {
         override val id: String = java.util.UUID.randomUUID().toString(),
         override val label: String = "PRESET",
         override val midiChannel: Int = 1,
+        override val size: ControlSize = ControlSize.MEDIUM,
         val currentPreset: Int = 0  // 0-127
     ) : ControlType()
 
@@ -100,6 +113,7 @@ sealed class ControlType {
         override val label: String,
         val noteNumber: Int,          // MIDI note 0-127
         override val midiChannel: Int = 10,  // channel 10 = drums
+        override val size: ControlSize = ControlSize.MEDIUM,
         val velocity: Int = 100       // fixed velocity
     ) : ControlType()
 }

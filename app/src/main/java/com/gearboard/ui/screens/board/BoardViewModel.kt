@@ -37,6 +37,15 @@ class BoardViewModel @Inject constructor(
     val controlSize = settingsRepository.controlSize
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1.0f)
 
+    val globalMidiChannel: StateFlow<Int> = settingsRepository.midiChannel
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    fun setGlobalMidiChannel(channel: Int) {
+        viewModelScope.launch {
+            settingsRepository.setMidiChannel(channel)
+        }
+    }
+
     // Section expanded states
     private val _pedalsExpanded = MutableStateFlow(true)
     val pedalsExpanded: StateFlow<Boolean> = _pedalsExpanded.asStateFlow()
@@ -97,6 +106,14 @@ class BoardViewModel @Inject constructor(
         }
     }
 
+    fun updatePedalBlockAppearance(blockId: String, appearance: com.gearboard.domain.model.BlockAppearance, layout: com.gearboard.domain.model.BlockLayout) {
+        val state = boardRepository.getCurrentState()
+        state.pedals.find { it.id == blockId }?.let { block ->
+            boardRepository.updatePedalBlock(block.copy(appearance = appearance, layoutMode = layout))
+            triggerAutoSave()
+        }
+    }
+
     // --- Effect Blocks ---
     fun addEffectBlock(block: ControlBlock) {
         boardRepository.addEffectBlock(block)
@@ -121,16 +138,36 @@ class BoardViewModel @Inject constructor(
         }
     }
 
+    fun updateEffectBlockAppearance(blockId: String, appearance: com.gearboard.domain.model.BlockAppearance, layout: com.gearboard.domain.model.BlockLayout) {
+        val state = boardRepository.getCurrentState()
+        state.effects.find { it.id == blockId }?.let { block ->
+            boardRepository.updateEffectBlock(block.copy(appearance = appearance, layoutMode = layout))
+            triggerAutoSave()
+        }
+    }
+
     // --- Amp ---
     fun toggleAmpEnabled() {
         val amp = boardRepository.getCurrentState().amp
         boardRepository.updateAmp(amp.copy(enabled = !amp.enabled))
     }
 
+    fun updateAmpAppearance(appearance: com.gearboard.domain.model.BlockAppearance, layout: com.gearboard.domain.model.BlockLayout) {
+        val amp = boardRepository.getCurrentState().amp
+        boardRepository.updateAmp(amp.copy(appearance = appearance, layoutMode = layout))
+        triggerAutoSave()
+    }
+
     // --- Cabinet ---
     fun toggleCabEnabled() {
         val cab = boardRepository.getCurrentState().cabinet
         boardRepository.updateCabinet(cab.copy(enabled = !cab.enabled))
+    }
+
+    fun updateCabAppearance(appearance: com.gearboard.domain.model.BlockAppearance, layout: com.gearboard.domain.model.BlockLayout) {
+        val cab = boardRepository.getCurrentState().cabinet
+        boardRepository.updateCabinet(cab.copy(appearance = appearance, layoutMode = layout))
+        triggerAutoSave()
     }
 
     // --- Control CRUD (block-level) ---

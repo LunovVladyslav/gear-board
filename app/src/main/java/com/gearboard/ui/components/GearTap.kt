@@ -5,7 +5,8 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gearboard.ui.theme.GearBoardColors
 import com.gearboard.ui.theme.GearBoardDimensions
+import com.gearboard.ui.theme.LocalAccentColor
 import kotlinx.coroutines.delay
 
 /**
@@ -40,17 +42,20 @@ import kotlinx.coroutines.delay
  * Sends CC 127 on each press with a 100ms flash animation.
  * Stateless — always returns to dim.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GearTap(
     label: String,
     onTap: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLongPress: (() -> Unit)? = null
 ) {
     val view = LocalView.current
     var isFlashing by remember { mutableStateOf(false) }
+    val accentColor = LocalAccentColor.current
 
     val bgColor by animateColorAsState(
-        targetValue = if (isFlashing) GearBoardColors.Accent else GearBoardColors.SurfaceElevated,
+        targetValue = if (isFlashing) accentColor else GearBoardColors.SurfaceElevated,
         animationSpec = tween(if (isFlashing) 30 else 100),
         label = "tapFlash"
     )
@@ -77,11 +82,17 @@ fun GearTap(
                 color = GearBoardColors.BorderDefault,
                 shape = RoundedCornerShape(GearBoardDimensions.RadiusM)
             )
-            .clickable {
-                isFlashing = true
-                onTap()
-                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-            }
+            .combinedClickable(
+                onClick = {
+                    isFlashing = true
+                    onTap()
+                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                },
+                onLongClick = {
+                    onLongPress?.invoke()
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                }
+            )
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -92,7 +103,7 @@ fun GearTap(
             Icon(
                 Icons.Default.TouchApp,
                 contentDescription = null,
-                tint = if (isFlashing) GearBoardColors.TextOnAccent else GearBoardColors.Accent,
+                tint = if (isFlashing) GearBoardColors.TextOnAccent else accentColor,
                 modifier = Modifier.size(16.dp)
             )
             Text(

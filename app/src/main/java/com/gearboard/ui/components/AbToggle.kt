@@ -30,6 +30,7 @@ fun AbToggle(
     onSlotSelected: (AbSlot) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val accentColor = com.gearboard.ui.theme.LocalAccentColor.current
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
@@ -45,9 +46,9 @@ fun AbToggle(
                 letterSpacing = 1.sp,
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(if (isSelected) GearBoardColors.Accent else GearBoardColors.SurfaceElevated)
+                    .background(if (isSelected) accentColor else GearBoardColors.SurfaceElevated)
                     .clickable { onSlotSelected(slot) }
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
             )
         }
     }

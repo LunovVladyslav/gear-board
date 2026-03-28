@@ -5,7 +5,8 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gearboard.ui.theme.GearBoardColors
 import com.gearboard.ui.theme.GearBoardDimensions
+import com.gearboard.ui.theme.LocalAccentColor
 
 /**
  * GearToggle — on/off toggle with two visual variants.
@@ -48,24 +50,29 @@ fun GearToggle(
     enabled: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
-    variant: ToggleVariant = ToggleVariant.STOMP
+    variant: ToggleVariant = ToggleVariant.STOMP,
+    onLongPress: (() -> Unit)? = null
 ) {
     val view = LocalView.current
 
     when (variant) {
-        ToggleVariant.STOMP -> StompToggle(label, enabled, onToggle, modifier, view)
-        ToggleVariant.SWITCH -> SwitchToggle(label, enabled, onToggle, modifier, view)
+        ToggleVariant.STOMP -> StompToggle(label, enabled, onToggle, modifier, view, onLongPress)
+        ToggleVariant.SWITCH -> SwitchToggle(label, enabled, onToggle, modifier, view, onLongPress)
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun StompToggle(
     label: String,
     enabled: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier,
-    view: android.view.View
+    view: android.view.View,
+    onLongPress: (() -> Unit)?
 ) {
+    val accentColor = LocalAccentColor.current
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -75,14 +82,20 @@ private fun StompToggle(
             modifier = Modifier
                 .size(GearBoardDimensions.ToggleStompSize)
                 .clip(RoundedCornerShape(GearBoardDimensions.RadiusM))
-                .clickable {
-                    onToggle()
-                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                }
+                .combinedClickable(
+                    onClick = {
+                        onToggle()
+                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    },
+                    onLongClick = {
+                        onLongPress?.invoke()
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    }
+                )
                 .background(
                     brush = Brush.verticalGradient(
                         colors = if (enabled) {
-                            listOf(GearBoardColors.Accent, GearBoardColors.AccentHover)
+                            listOf(accentColor, accentColor.copy(alpha = 0.8f))
                         } else {
                             listOf(GearBoardColors.SurfaceElevated, GearBoardColors.Surface)
                         }
@@ -111,16 +124,19 @@ private fun StompToggle(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SwitchToggle(
     label: String,
     enabled: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier,
-    view: android.view.View
+    view: android.view.View,
+    onLongPress: (() -> Unit)?
 ) {
+    val accentColor = LocalAccentColor.current
     val trackColor by animateColorAsState(
-        targetValue = if (enabled) GearBoardColors.Accent else GearBoardColors.SurfaceElevated,
+        targetValue = if (enabled) accentColor else GearBoardColors.SurfaceElevated,
         animationSpec = tween(200),
         label = "switchTrack"
     )
@@ -135,10 +151,16 @@ private fun SwitchToggle(
                 color = GearBoardColors.BorderDefault,
                 shape = RoundedCornerShape(GearBoardDimensions.RadiusM)
             )
-            .clickable {
-                onToggle()
-                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-            }
+            .combinedClickable(
+                onClick = {
+                    onToggle()
+                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                },
+                onLongClick = {
+                    onLongPress?.invoke()
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                }
+            )
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)

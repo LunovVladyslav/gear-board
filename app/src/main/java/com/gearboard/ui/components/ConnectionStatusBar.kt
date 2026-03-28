@@ -138,3 +138,49 @@ fun ConnectionStatusBar(
         }
     }
 }
+
+@Composable
+fun ConnectionDot(
+    state: ConnectionState,
+    modifier: Modifier = Modifier
+) {
+    val dotColor by animateColorAsState(
+        targetValue = when (state) {
+            is ConnectionState.Disconnected -> GearBoardColors.OffIndicator
+            is ConnectionState.Scanning -> GearBoardColors.Accent
+            is ConnectionState.Connecting -> GearBoardColors.Accent
+            is ConnectionState.Connected -> when (state.type) {
+                ConnectionType.USB -> GearBoardColors.ConnectedUsb
+                ConnectionType.BLUETOOTH -> GearBoardColors.ConnectedBle
+            }
+            is ConnectionState.Error -> GearBoardColors.DangerText
+        },
+        animationSpec = tween(300),
+        label = "dotColor"
+    )
+
+    val isPulsing = state is ConnectionState.Scanning || state is ConnectionState.Connecting
+    val pulseAlpha = if (isPulsing) {
+        val transition = rememberInfiniteTransition(label = "pulse")
+        val alpha by transition.animateFloat(
+            initialValue = 0.3f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(800),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulseAlpha"
+        )
+        alpha
+    } else {
+        1f
+    }
+
+    Box(
+        modifier = modifier
+            .size(GearBoardDimensions.ConnectionDotSize)
+            .alpha(pulseAlpha)
+            .clip(CircleShape)
+            .background(dotColor)
+    )
+}

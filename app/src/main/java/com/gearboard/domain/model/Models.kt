@@ -9,6 +9,14 @@ package com.gearboard.domain.model
 /** A/B slot for dual-state switching. */
 enum class AbSlot { A, B }
 
+enum class HeaderStyle { DEFAULT, MINIMAL, BOLD }
+enum class BlockLayout { GRID, ROW, COMPACT }
+
+data class BlockAppearance(
+    val accentColor: Long = 0xFFE8A020, // GearBoardColors.Accent default (Amber)
+    val headerStyle: HeaderStyle = HeaderStyle.MINIMAL
+)
+
 /**
  * A block (pedal, effect unit, etc.) containing arbitrary controls.
  * Used in Pedals and Effects sections which support multiple blocks.
@@ -21,7 +29,9 @@ data class ControlBlock(
     val controls: List<ControlType> = emptyList(),
     val abSlot: AbSlot = AbSlot.A,
     val stateA: Map<String, Float> = emptyMap(),  // controlId -> normalized value
-    val stateB: Map<String, Float> = emptyMap()
+    val stateB: Map<String, Float> = emptyMap(),
+    val appearance: BlockAppearance = BlockAppearance(),
+    val layoutMode: BlockLayout = BlockLayout.COMPACT
 )
 
 /** Amp section settings */
@@ -32,7 +42,9 @@ data class AmpSettings(
     val controls: List<ControlType> = emptyList(),
     val abSlot: AbSlot = AbSlot.A,
     val stateA: Map<String, Float> = emptyMap(),
-    val stateB: Map<String, Float> = emptyMap()
+    val stateB: Map<String, Float> = emptyMap(),
+    val appearance: BlockAppearance = BlockAppearance(),
+    val layoutMode: BlockLayout = BlockLayout.COMPACT
 )
 
 /** Cabinet settings */
@@ -43,7 +55,9 @@ data class CabinetSettings(
     val controls: List<ControlType> = emptyList(),
     val abSlot: AbSlot = AbSlot.A,
     val stateA: Map<String, Float> = emptyMap(),
-    val stateB: Map<String, Float> = emptyMap()
+    val stateB: Map<String, Float> = emptyMap(),
+    val appearance: BlockAppearance = BlockAppearance(),
+    val layoutMode: BlockLayout = BlockLayout.COMPACT
 )
 
 /** Complete board state (all sections) */

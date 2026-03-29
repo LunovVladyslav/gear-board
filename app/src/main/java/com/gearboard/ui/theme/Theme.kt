@@ -6,7 +6,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
@@ -65,8 +64,9 @@ fun GearBoardTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = GearBoardColors.Background.toArgb()
-            window.navigationBarColor = GearBoardColors.Surface.toArgb()
+            // enableEdgeToEdge() in MainActivity already sets status/nav bar
+            // to transparent and disables decor fitting. Setting solid colors
+            // here would fight that and can cause an inset double-count gap.
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = false
                 isAppearanceLightNavigationBars = false

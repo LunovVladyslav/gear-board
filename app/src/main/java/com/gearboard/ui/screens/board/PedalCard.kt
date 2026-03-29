@@ -2,6 +2,7 @@ package com.gearboard.ui.screens.board
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,6 +70,7 @@ fun PedalCard(
     onCustomize: () -> Unit = {},
     onAbSwitch: (AbSlot) -> Unit = {},
     onBadgeTap: (ControlType) -> Unit = {},
+    isDeviceConnected: Boolean = false,
     modifier: Modifier = Modifier,
     controlScale: Float = 1.0f
 ) {
@@ -166,6 +168,34 @@ fun PedalCard(
                     DropdownMenuItem(
                         text = { Text("Delete Block", color = GearBoardColors.DangerText, fontSize = 13.sp) },
                         onClick = { showMenu = false; onRemove() }
+                    )
+                }
+            }
+
+            // Unmapped banner (only when device is connected and some controls lack CC)
+            if (isDeviceConnected) {
+                val unmappedCount = block.controls.count { control ->
+                    when (control) {
+                        is ControlType.Knob     -> control.ccNumber == 0
+                        is ControlType.Toggle   -> control.ccNumber == 0
+                        is ControlType.Tap      -> control.ccNumber == 0
+                        is ControlType.Selector -> control.ccNumber == 0
+                        is ControlType.Fader    -> control.ccNumber == 0
+                        is ControlType.PresetNav -> false
+                        is ControlType.Pad       -> false
+                    }
+                }
+                if (unmappedCount > 0) {
+                    Text(
+                        text = "$unmappedCount unmapped",
+                        fontSize = 10.sp,
+                        color = GearBoardColors.Accent,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(GearBoardColors.Accent.copy(alpha = 0.12f))
+                            .clickable { onBadgeTap(block.controls.first()) }
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
                     )
                 }
             }

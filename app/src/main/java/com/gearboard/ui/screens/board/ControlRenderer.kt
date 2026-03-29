@@ -54,7 +54,6 @@ fun RenderControl(
     modifier: Modifier = Modifier
 ) {
     val finalScale = controlScale * control.size.scaleFactor
-    UnmappedBadge(control = control, onBadgeTap = { onBadgeTap(control) }) {
     when (control) {
         is ControlType.Knob -> {
             val knobSize = (GearBoardDimensions.KnobDefaultSize.value * finalScale).dp
@@ -136,7 +135,6 @@ fun RenderControl(
             )
         }
     }
-    } // end UnmappedBadge
 }
 
 /**

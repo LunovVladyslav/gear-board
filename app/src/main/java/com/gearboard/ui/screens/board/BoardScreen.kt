@@ -250,6 +250,7 @@ fun BoardScreen(
                                     onBadgeTap = { control ->
                                         mappingControl = MappingControlState(control, isPedals = true, blockId = block.id, section = "pedals")
                                     },
+                                    isDeviceConnected = connectionState is com.gearboard.ui.components.ConnectionState.Connected,
                                     controlScale = controlScale
                                 )
                             }

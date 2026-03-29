@@ -34,6 +34,8 @@ import androidx.compose.material.icons.filled.Usb
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +48,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,8 +79,11 @@ fun SettingsScreen(
     val controlSize by settingsViewModel.controlSize.collectAsStateWithLifecycle()
     val hapticEnabled by settingsViewModel.hapticEnabled.collectAsStateWithLifecycle()
     val keepScreenOn by settingsViewModel.keepScreenOn.collectAsStateWithLifecycle()
+    val midiChannel by settingsViewModel.midiChannel.collectAsStateWithLifecycle()
     val isPremium by settingsViewModel.isPremium.collectAsStateWithLifecycle()
     val autoReconnect by settingsViewModel.autoReconnect.collectAsStateWithLifecycle()
+
+    var showChannelMenu by remember { mutableStateOf(false) }
 
     // Connection state
     val connectionState by connectionViewModel.connectionState.collectAsStateWithLifecycle()
@@ -261,6 +269,48 @@ fun SettingsScreen(
                 checked = sendOnChange,
                 onCheckedChange = { settingsViewModel.setSendOnChange(it) }
             )
+        }
+
+        item {
+            Box {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(GearBoardColors.Surface)
+                        .border(1.dp, GearBoardColors.BorderDefault, RoundedCornerShape(8.dp))
+                        .clickable { showChannelMenu = true }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("MIDI Channel", color = GearBoardColors.TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Text("Global channel for all controls", color = GearBoardColors.TextDisabled, fontSize = 12.sp)
+                    }
+                    Text(
+                        if (midiChannel == 0) "OMNI" else "CH $midiChannel",
+                        color = GearBoardColors.Accent,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                DropdownMenu(
+                    expanded = showChannelMenu,
+                    onDismissRequest = { showChannelMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("OMNI", color = if (midiChannel == 0) GearBoardColors.Accent else GearBoardColors.TextPrimary, fontSize = 13.sp) },
+                        onClick = { settingsViewModel.setMidiChannel(0); showChannelMenu = false }
+                    )
+                    (1..16).forEach { ch ->
+                        DropdownMenuItem(
+                            text = { Text("CH $ch", color = if (midiChannel == ch) GearBoardColors.Accent else GearBoardColors.TextPrimary, fontSize = 13.sp) },
+                            onClick = { settingsViewModel.setMidiChannel(ch); showChannelMenu = false }
+                        )
+                    }
+                }
+            }
         }
 
         // MIDI Monitor link

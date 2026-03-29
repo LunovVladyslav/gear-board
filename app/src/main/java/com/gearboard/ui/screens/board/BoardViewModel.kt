@@ -324,16 +324,6 @@ class BoardViewModel @Inject constructor(
         triggerAutoSave()
     }
 
-    fun applyAmpTemplate(template: AmpTemplate) {
-        template.controls().forEach { boardRepository.addAmpControl(it) }
-        triggerAutoSave()
-    }
-
-    fun applyCabTemplate(template: CabTemplate) {
-        template.controls().forEach { boardRepository.addCabControl(it) }
-        triggerAutoSave()
-    }
-
     // --- MIDI Sending ---
 
     /** Unified MIDI send for any ControlType interaction. */

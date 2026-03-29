@@ -95,11 +95,15 @@ fun BoardScreen(
     var customizeTarget by remember { mutableStateOf<CustomizeTarget?>(null) }
     var mappingControl by remember { mutableStateOf<MappingControlState?>(null) }
 
-    // Add control dialog for amp/cab
-    var showAddAmpControl by remember { mutableStateOf(false) }
-    var showAddCabControl by remember { mutableStateOf(false) }
-    var editAmpControl by remember { mutableStateOf<ControlType?>(null) }
-    var editCabControl by remember { mutableStateOf<ControlType?>(null) }
+    // Amp/cab block dialog state
+    var addAmpControlTarget by remember { mutableStateOf<String?>(null) }   // blockId
+    var addCabControlTarget by remember { mutableStateOf<String?>(null) }   // blockId
+    var editAmpControlState by remember { mutableStateOf<EditControlState?>(null) }
+    var editCabControlState by remember { mutableStateOf<EditControlState?>(null) }
+    var renameAmpTarget by remember { mutableStateOf<RenameTarget?>(null) }
+    var renameCabTarget by remember { mutableStateOf<RenameTarget?>(null) }
+    val showAddAmpBlock by viewModel.showAddAmpBlockDialog.collectAsStateWithLifecycle()
+    val showAddCabBlock by viewModel.showAddCabBlockDialog.collectAsStateWithLifecycle()
 
     var showChannelMenu by remember { mutableStateOf(false) }
 
@@ -269,42 +273,55 @@ fun BoardScreen(
                 modifier = Modifier.padding(horizontal = 8.dp)
             ) {
                 Column {
-                    // A/B toggle for amp
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        AbToggle(
-                            currentSlot = boardState.ampBlocks.firstOrNull()?.currentSlot ?: AbSlot.A,
-                            onSlotSelected = { viewModel.switchAmpAbSlot(it) }
-                        )
-                    }
                     AmpSection(
-                    amp = boardState.ampBlocks.firstOrNull(),
-                    onKnobValueChange = { knob, value ->
-                        viewModel.onAmpKnobValueChange(knob.id, knob, value)
-                    },
-                    onToggle = { toggle -> viewModel.onAmpToggle(toggle.id, toggle) },
-                    onTap = { tap -> viewModel.onTap(tap) },
-                    onSelectorChange = { sel, idx ->
-                        viewModel.onAmpSelectorChange(sel.id, sel, idx)
-                    },
-                    onFaderValueChange = { fader, value ->
-                        viewModel.onAmpFaderValueChange(fader.id, fader, value)
-                    },
-                    onPresetPrev = { nav -> viewModel.onPresetPrev(false, "", nav.id, nav) },
-                    onPresetNext = { nav -> viewModel.onPresetNext(false, "", nav.id, nav) },
-                    onPadDown = { pad -> viewModel.sendPadOn(pad) },
-                    onPadUp = { pad -> viewModel.sendPadOff(pad) },
-                    onEditControl = { control -> editAmpControl = control },
-                    onAddControl = { showAddAmpControl = true },
-                    onClearAll = { viewModel.clearAmpControls() },
-                    onCustomize = { customizeTarget = CustomizeTarget.Amp(boardState.ampBlocks.firstOrNull()) },
-                    onApplyAmpTemplate = { viewModel.applyAmpTemplate(it) },
-                    onBadgeTap = { control ->
-                        mappingControl = MappingControlState(control, section = "amp")
-                    },
-                    controlScale = controlScale
+                        ampBlocks = boardState.ampBlocks,
+                        onAddBlock = { viewModel.showAddAmpBlockDialog() },
+                        onRemoveBlock = { blockId -> viewModel.removeAmpBlock(blockId) },
+                        onAbSwitch = { blockId, slot -> viewModel.switchAmpBlockAbSlot(blockId, slot) },
+                        onAddControl = { blockId -> addAmpControlTarget = blockId },
+                        onEditControl = { blockId, control ->
+                            editAmpControlState = EditControlState(false, blockId, control)
+                        },
+                        onCustomize = { blockId ->
+                            customizeTarget = CustomizeTarget.Amp(boardState.ampBlocks.find { it.id == blockId })
+                        },
+                        onRename = { blockId ->
+                            renameAmpTarget = RenameTarget(false, blockId,
+                                boardState.ampBlocks.find { it.id == blockId }?.name ?: "")
+                        },
+                        onKnobValueChange = { blockId, knob, value ->
+                            val updated = knob.copy(value = value)
+                            viewModel.updateAmpBlockControl(blockId, knob.id, updated)
+                            viewModel.sendControlMidi(updated)
+                        },
+                        onToggle = { blockId, toggle ->
+                            val updated = toggle.copy(isOn = !toggle.isOn)
+                            viewModel.updateAmpBlockControl(blockId, toggle.id, updated)
+                            viewModel.sendControlMidi(updated)
+                        },
+                        onTap = { _, tap -> viewModel.onTap(tap) },
+                        onSelectorChange = { blockId, sel, idx ->
+                            val updated = sel.copy(selectedIndex = idx)
+                            viewModel.updateAmpBlockControl(blockId, sel.id, updated)
+                            viewModel.sendControlMidi(updated)
+                        },
+                        onFaderValueChange = { blockId, fader, value ->
+                            val updated = fader.copy(value = value)
+                            viewModel.updateAmpBlockControl(blockId, fader.id, updated)
+                            viewModel.sendControlMidi(updated)
+                        },
+                        onPresetPrev = { blockId, nav ->
+                            viewModel.onPresetPrev(false, blockId, nav.id, nav)
+                        },
+                        onPresetNext = { blockId, nav ->
+                            viewModel.onPresetNext(false, blockId, nav.id, nav)
+                        },
+                        onPadDown = { _, pad -> viewModel.sendPadOn(pad) },
+                        onPadUp = { _, pad -> viewModel.sendPadOff(pad) },
+                        onBadgeTap = { blockId, control ->
+                            mappingControl = MappingControlState(control, blockId = blockId, section = "amp")
+                        },
+                        controlScale = controlScale
                     )
                 }
             }
@@ -321,43 +338,56 @@ fun BoardScreen(
                 modifier = Modifier.padding(horizontal = 8.dp)
             ) {
                 Column {
-                    // A/B toggle for cab
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        AbToggle(
-                            currentSlot = boardState.cabBlocks.firstOrNull()?.currentSlot ?: AbSlot.A,
-                            onSlotSelected = { viewModel.switchCabAbSlot(it) }
-                        )
-                    }
                     CabSection(
-                    cab = boardState.cabBlocks.firstOrNull(),
-                    onKnobValueChange = { knob, value ->
-                        viewModel.onCabKnobValueChange(knob.id, knob, value)
-                    },
-                    onToggle = { toggle -> viewModel.onCabToggle(toggle.id, toggle) },
-                    onTap = { tap -> viewModel.onTap(tap) },
-                    onSelectorChange = { sel, idx ->
-                        viewModel.onCabSelectorChange(sel.id, sel, idx)
-                    },
-                    onFaderValueChange = { fader, value ->
-                        viewModel.onCabFaderValueChange(fader.id, fader, value)
-                    },
-                    onPresetPrev = { nav -> viewModel.onPresetPrev(false, "", nav.id, nav) },
-                    onPresetNext = { nav -> viewModel.onPresetNext(false, "", nav.id, nav) },
-                    onPadDown = { pad -> viewModel.sendPadOn(pad) },
-                    onPadUp = { pad -> viewModel.sendPadOff(pad) },
-                    onEditControl = { control -> editCabControl = control },
-                    onAddControl = { showAddCabControl = true },
-                    onClearAll = { viewModel.clearCabControls() },
-                    onCustomize = { customizeTarget = CustomizeTarget.Cab(boardState.cabBlocks.firstOrNull()) },
-                    onApplyCabTemplate = { viewModel.applyCabTemplate(it) },
-                    onBadgeTap = { control ->
-                        mappingControl = MappingControlState(control, section = "cab")
-                    },
-                    controlScale = controlScale
-                )
+                        cabBlocks = boardState.cabBlocks,
+                        onAddBlock = { viewModel.showAddCabBlockDialog() },
+                        onRemoveBlock = { blockId -> viewModel.removeCabBlock(blockId) },
+                        onAbSwitch = { blockId, slot -> viewModel.switchCabBlockAbSlot(blockId, slot) },
+                        onAddControl = { blockId -> addCabControlTarget = blockId },
+                        onEditControl = { blockId, control ->
+                            editCabControlState = EditControlState(false, blockId, control)
+                        },
+                        onCustomize = { blockId ->
+                            customizeTarget = CustomizeTarget.Cab(boardState.cabBlocks.find { it.id == blockId })
+                        },
+                        onRename = { blockId ->
+                            renameCabTarget = RenameTarget(false, blockId,
+                                boardState.cabBlocks.find { it.id == blockId }?.name ?: "")
+                        },
+                        onKnobValueChange = { blockId, knob, value ->
+                            val updated = knob.copy(value = value)
+                            viewModel.updateCabBlockControl(blockId, knob.id, updated)
+                            viewModel.sendControlMidi(updated)
+                        },
+                        onToggle = { blockId, toggle ->
+                            val updated = toggle.copy(isOn = !toggle.isOn)
+                            viewModel.updateCabBlockControl(blockId, toggle.id, updated)
+                            viewModel.sendControlMidi(updated)
+                        },
+                        onTap = { _, tap -> viewModel.onTap(tap) },
+                        onSelectorChange = { blockId, sel, idx ->
+                            val updated = sel.copy(selectedIndex = idx)
+                            viewModel.updateCabBlockControl(blockId, sel.id, updated)
+                            viewModel.sendControlMidi(updated)
+                        },
+                        onFaderValueChange = { blockId, fader, value ->
+                            val updated = fader.copy(value = value)
+                            viewModel.updateCabBlockControl(blockId, fader.id, updated)
+                            viewModel.sendControlMidi(updated)
+                        },
+                        onPresetPrev = { blockId, nav ->
+                            viewModel.onPresetPrev(false, blockId, nav.id, nav)
+                        },
+                        onPresetNext = { blockId, nav ->
+                            viewModel.onPresetNext(false, blockId, nav.id, nav)
+                        },
+                        onPadDown = { _, pad -> viewModel.sendPadOn(pad) },
+                        onPadUp = { _, pad -> viewModel.sendPadOff(pad) },
+                        onBadgeTap = { blockId, control ->
+                            mappingControl = MappingControlState(control, blockId = blockId, section = "cab")
+                        },
+                        controlScale = controlScale
+                    )
                 }
             }
         }
@@ -480,61 +510,77 @@ fun BoardScreen(
         )
     }
 
-    // Add amp control
-    if (showAddAmpControl) {
+    // Add control to amp block
+    addAmpControlTarget?.let { blockId ->
         AddEditControlDialog(
             onConfirm = { control ->
-                viewModel.addAmpControl(control)
-                showAddAmpControl = false
+                viewModel.addAmpBlockControl(blockId, control)
+                addAmpControlTarget = null
             },
-            onDismiss = { showAddAmpControl = false }
+            onDismiss = { addAmpControlTarget = null }
         )
     }
 
-    // Edit amp control
-    editAmpControl?.let { control ->
+    // Edit control in amp block
+    editAmpControlState?.let { state ->
         AddEditControlDialog(
-            existingControl = control,
+            existingControl = state.control,
             onConfirm = { updated ->
-                viewModel.updateAmpControl(control.id, updated)
-                editAmpControl = null
+                viewModel.updateAmpBlockControl(state.blockId, state.control.id, updated)
+                editAmpControlState = null
             },
             onDelete = {
-                viewModel.removeAmpControl(control.id)
-                editAmpControl = null
+                viewModel.removeAmpBlockControl(state.blockId, state.control.id)
+                editAmpControlState = null
             },
-            onDismiss = { editAmpControl = null }
+            onDismiss = { editAmpControlState = null }
         )
     }
 
-    // Add cab control
-    if (showAddCabControl) {
+    // Add control to cab block
+    addCabControlTarget?.let { blockId ->
         AddEditControlDialog(
             onConfirm = { control ->
-                viewModel.addCabControl(control)
-                showAddCabControl = false
+                viewModel.addCabBlockControl(blockId, control)
+                addCabControlTarget = null
             },
-            onDismiss = { showAddCabControl = false }
+            onDismiss = { addCabControlTarget = null }
         )
     }
 
-    // Edit cab control
-    editCabControl?.let { control ->
+    // Edit control in cab block
+    editCabControlState?.let { state ->
         AddEditControlDialog(
-            existingControl = control,
+            existingControl = state.control,
             onConfirm = { updated ->
-                viewModel.updateCabControl(control.id, updated)
-                editCabControl = null
+                viewModel.updateCabBlockControl(state.blockId, state.control.id, updated)
+                editCabControlState = null
             },
             onDelete = {
-                viewModel.removeCabControl(control.id)
-                editCabControl = null
+                viewModel.removeCabBlockControl(state.blockId, state.control.id)
+                editCabControlState = null
             },
-            onDismiss = { editCabControl = null }
+            onDismiss = { editCabControlState = null }
         )
     }
 
-    // Rename block dialog
+    // Add amp block sheet (implemented in step 7)
+    if (showAddAmpBlock) {
+        AddAmpBlockSheet(
+            onAddBlock = { viewModel.addAmpBlock(it) },
+            onDismiss = { viewModel.hideAddAmpBlockDialog() }
+        )
+    }
+
+    // Add cab block sheet (implemented in step 7)
+    if (showAddCabBlock) {
+        AddCabBlockSheet(
+            onAddBlock = { viewModel.addCabBlock(it) },
+            onDismiss = { viewModel.hideAddCabBlockDialog() }
+        )
+    }
+
+    // Rename pedal/effect block dialog
     renameTarget?.let { target ->
         RenameBlockDialog(
             currentName = target.currentName,
@@ -547,6 +593,30 @@ fun BoardScreen(
                 renameTarget = null
             },
             onDismiss = { renameTarget = null }
+        )
+    }
+
+    // Rename amp block dialog
+    renameAmpTarget?.let { target ->
+        RenameBlockDialog(
+            currentName = target.currentName,
+            onRename = { newName ->
+                viewModel.renameAmpBlock(target.blockId, newName)
+                renameAmpTarget = null
+            },
+            onDismiss = { renameAmpTarget = null }
+        )
+    }
+
+    // Rename cab block dialog
+    renameCabTarget?.let { target ->
+        RenameBlockDialog(
+            currentName = target.currentName,
+            onRename = { newName ->
+                viewModel.renameCabBlock(target.blockId, newName)
+                renameCabTarget = null
+            },
+            onDismiss = { renameCabTarget = null }
         )
     }
 
@@ -578,8 +648,12 @@ fun BoardScreen(
                         if (target.isPedals) viewModel.updatePedalBlockAppearance(target.block.id, appearance, layout)
                         else viewModel.updateEffectBlockAppearance(target.block.id, appearance, layout)
                     }
-                    is CustomizeTarget.Amp -> viewModel.updateAmpAppearance(appearance, layout)
-                    is CustomizeTarget.Cab -> viewModel.updateCabAppearance(appearance, layout)
+                    is CustomizeTarget.Amp -> target.block?.let {
+                        viewModel.updateAmpBlockAppearance(it.id, appearance, layout)
+                    }
+                    is CustomizeTarget.Cab -> target.block?.let {
+                        viewModel.updateCabBlockAppearance(it.id, appearance, layout)
+                    }
                 }
                 customizeTarget = null
             },
@@ -606,8 +680,8 @@ fun BoardScreen(
                 val updated = updateControlCcNumber(state.control, ccNumber)
                 if (updated != null) {
                     when {
-                        state.section == "amp" -> viewModel.updateAmpControl(state.control.id, updated)
-                        state.section == "cab" -> viewModel.updateCabControl(state.control.id, updated)
+                        state.section == "amp" -> viewModel.updateAmpBlockControl(state.blockId, state.control.id, updated)
+                        state.section == "cab" -> viewModel.updateCabBlockControl(state.blockId, state.control.id, updated)
                         state.isPedals -> viewModel.updateControlInBlock(true, state.blockId, state.control.id, updated)
                         else -> viewModel.updateControlInBlock(false, state.blockId, state.control.id, updated)
                     }

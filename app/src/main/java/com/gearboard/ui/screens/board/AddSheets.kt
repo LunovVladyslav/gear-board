@@ -360,6 +360,86 @@ private fun TemplateGridCard(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Amp / Cab block sheets — stubs replaced in Step 7
+// ---------------------------------------------------------------------------
+
+/**
+ * AddAmpBlockSheet — bottom sheet for choosing an amp block template.
+ * Full implementation in Step 7; this stub is required for Step 6 to compile.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddAmpBlockSheet(
+    onAddBlock: (com.gearboard.domain.model.AmpBlock) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = GearBoardColors.Surface
+    ) {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "ADD AMPLIFIER BLOCK",
+                color = GearBoardColors.Accent,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp
+            )
+            Text(
+                "Template picker coming soon.",
+                color = GearBoardColors.TextSecondary,
+                fontSize = 12.sp
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * AddCabBlockSheet — bottom sheet for choosing a cab block template.
+ * Full implementation in Step 7; this stub is required for Step 6 to compile.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddCabBlockSheet(
+    onAddBlock: (com.gearboard.domain.model.CabBlock) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = GearBoardColors.Surface
+    ) {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "ADD CABINET BLOCK",
+                color = GearBoardColors.Accent,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp
+            )
+            Text(
+                "Template picker coming soon.",
+                color = GearBoardColors.TextSecondary,
+                fontSize = 12.sp
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
 /** Generate a new UUID for a control to avoid ID collisions when instantiating templates. */
 private fun regenerateId(control: ControlType): ControlType {
     val newId = java.util.UUID.randomUUID().toString()

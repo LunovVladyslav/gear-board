@@ -4,10 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gearboard.data.repository.BoardRepository
 import com.gearboard.data.repository.SettingsRepository
+import com.gearboard.domain.model.AmpTemplates
+import com.gearboard.domain.model.CabTemplates
 import com.gearboard.domain.model.ControlBlock
 import com.gearboard.domain.model.ControlType
 import com.gearboard.domain.model.DisplayFormat
-import com.gearboard.domain.model.FaderOrientation
 import com.gearboard.midi.GearBoardMidiManager
 import com.gearboard.ui.screens.board.OnboardingTemplate
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -199,23 +200,11 @@ class GuidedSetupViewModel @Inject constructor(
         )
         boardRepository.addPedalBlock(odBlock)
 
-        val ampControls = listOf(
-            ControlType.Knob(label = "Gain", ccNumber = 0),
-            ControlType.Knob(label = "Bass", ccNumber = 0),
-            ControlType.Knob(label = "Mid", ccNumber = 0),
-            ControlType.Knob(label = "Treble", ccNumber = 0),
-            ControlType.Knob(label = "Presence", ccNumber = 0),
-            ControlType.Knob(label = "Master", ccNumber = 0),
-            ControlType.Toggle(label = "Channel", ccNumber = 0, pulseMode = false)
-        )
-        ampControls.forEach { boardRepository.addAmpControl(it) }
+        val ampBlock = AmpTemplates.HIGH_GAIN.copy(id = "amp_main")
+        boardRepository.addAmpBlock(ampBlock)
 
-        val cabControls = listOf(
-            ControlType.Selector(label = "Model", ccNumber = 0, positions = listOf("4x12", "2x12")),
-            ControlType.Selector(label = "Mic", ccNumber = 0, positions = listOf("SM57", "MD421")),
-            ControlType.Fader(label = "Position", ccNumber = 0)
-        )
-        cabControls.forEach { boardRepository.addCabControl(it) }
+        val cabBlock = CabTemplates.CLOSED_BACK_412.copy(id = "cab_main")
+        boardRepository.addCabBlock(cabBlock)
 
         val delayBlock = ControlBlock(
             name = "Delay", type = "Time",
@@ -229,12 +218,11 @@ class GuidedSetupViewModel @Inject constructor(
         )
         boardRepository.addEffectBlock(delayBlock)
 
-        // 8 key controls for guided mapping
         _mappingControls.value = listOf(
-            MappingItem("Gain", ampControls[0].id, "amp", "amp_main"),
-            MappingItem("Master", ampControls[5].id, "amp", "amp_main"),
-            MappingItem("Bass", ampControls[1].id, "amp", "amp_main"),
-            MappingItem("Treble", ampControls[3].id, "amp", "amp_main"),
+            MappingItem("Gain", ampBlock.controls[0].id, "amp", ampBlock.id),
+            MappingItem("Master", ampBlock.controls[5].id, "amp", ampBlock.id),
+            MappingItem("Bass", ampBlock.controls[1].id, "amp", ampBlock.id),
+            MappingItem("Treble", ampBlock.controls[3].id, "amp", ampBlock.id),
             MappingItem("Drive", odBlock.controls[0].id, "pedals", odBlock.id),
             MappingItem("OD On/Off", odBlock.controls[4].id, "pedals", odBlock.id),
             MappingItem("Delay Mix", delayBlock.controls[2].id, "effects", delayBlock.id),
@@ -254,26 +242,17 @@ class GuidedSetupViewModel @Inject constructor(
         )
         boardRepository.addPedalBlock(odBlock)
 
-        val ampControls = listOf(
-            ControlType.Knob(label = "Gain", ccNumber = 0),
-            ControlType.Knob(label = "Bass", ccNumber = 0),
-            ControlType.Knob(label = "Mid", ccNumber = 0),
-            ControlType.Knob(label = "Treble", ccNumber = 0),
-            ControlType.Knob(label = "Master", ccNumber = 0)
-        )
-        ampControls.forEach { boardRepository.addAmpControl(it) }
+        val ampBlock = AmpTemplates.BASS_AMP.copy(id = "amp_main")
+        boardRepository.addAmpBlock(ampBlock)
 
-        val cabControls = listOf(
-            ControlType.Selector(label = "Model", ccNumber = 0, positions = listOf("8x10", "4x10")),
-            ControlType.Selector(label = "Mic", ccNumber = 0, positions = listOf("RE20", "U47"))
-        )
-        cabControls.forEach { boardRepository.addCabControl(it) }
+        val cabBlock = CabTemplates.BASS_410.copy(id = "cab_main")
+        boardRepository.addCabBlock(cabBlock)
 
         _mappingControls.value = listOf(
-            MappingItem("Gain", ampControls[0].id, "amp", "amp_main"),
-            MappingItem("Master", ampControls[4].id, "amp", "amp_main"),
-            MappingItem("Bass", ampControls[1].id, "amp", "amp_main"),
-            MappingItem("Treble", ampControls[3].id, "amp", "amp_main"),
+            MappingItem("Gain", ampBlock.controls[0].id, "amp", ampBlock.id),
+            MappingItem("Master", ampBlock.controls[5].id, "amp", ampBlock.id),
+            MappingItem("Bass", ampBlock.controls[1].id, "amp", ampBlock.id),
+            MappingItem("Treble", ampBlock.controls[4].id, "amp", ampBlock.id),
             MappingItem("Drive", odBlock.controls[0].id, "pedals", odBlock.id),
             MappingItem("OD On/Off", odBlock.controls[3].id, "pedals", odBlock.id)
         )
@@ -302,14 +281,8 @@ class GuidedSetupViewModel @Inject constructor(
         )
         boardRepository.addPedalBlock(odBlock)
 
-        val ampControls = listOf(
-            ControlType.Knob(label = "Gain", ccNumber = 0),
-            ControlType.Knob(label = "Bass", ccNumber = 0),
-            ControlType.Knob(label = "Mid", ccNumber = 0),
-            ControlType.Knob(label = "Treble", ccNumber = 0),
-            ControlType.Knob(label = "Master", ccNumber = 0)
-        )
-        ampControls.forEach { boardRepository.addAmpControl(it) }
+        val ampBlock = AmpTemplates.MODERN_HIGH_GAIN.copy(id = "amp_main")
+        boardRepository.addAmpBlock(ampBlock)
 
         val chorusBlock = ControlBlock(
             name = "Chorus", type = "Modulation",
@@ -345,9 +318,12 @@ class GuidedSetupViewModel @Inject constructor(
         )
         boardRepository.addEffectBlock(reverbBlock)
 
+        val cabBlock = CabTemplates.CLOSED_BACK_212.copy(id = "cab_main")
+        boardRepository.addCabBlock(cabBlock)
+
         _mappingControls.value = listOf(
-            MappingItem("Gain", ampControls[0].id, "amp", "amp_main"),
-            MappingItem("Master", ampControls[4].id, "amp", "amp_main"),
+            MappingItem("Gain", ampBlock.controls[0].id, "amp", ampBlock.id),
+            MappingItem("Master", ampBlock.controls[5].id, "amp", ampBlock.id),
             MappingItem("Drive", odBlock.controls[0].id, "pedals", odBlock.id),
             MappingItem("OD On/Off", odBlock.controls[3].id, "pedals", odBlock.id),
             MappingItem("Delay Mix", delayBlock.controls[2].id, "effects", delayBlock.id),

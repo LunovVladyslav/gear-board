@@ -158,12 +158,12 @@ fun UnmappedBadge(
             Text(
                 text = "!",
                 color = GearBoardColors.TextOnAccent,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
-                    .offset(x = (-2).dp, y = 2.dp)
-                    .size(18.dp)
+                    .offset(x = 4.dp, y = (-4).dp)
+                    .size(16.dp)
                     .clip(CircleShape)
                     .background(com.gearboard.ui.theme.LocalAccentColor.current)
                     .clickable(onClick = onBadgeTap)

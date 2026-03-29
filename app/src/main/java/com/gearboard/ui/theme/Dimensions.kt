@@ -21,7 +21,7 @@ object GearBoardDimensions {
     const val KNOB_SENSITIVITY = 200f // 1dp drag = 1/200 value change
 
     // Toggle
-    val ToggleMinHeight = 56.dp      // Minimum toggle button height
+    val ToggleMinHeight = 40.dp      // Minimum toggle button height
     val ToggleStompSize = 64.dp      // Stomp button size
     val SwitchWidth = 48.dp          // Switch toggle width
     val SwitchHeight = 24.dp         // Switch toggle height

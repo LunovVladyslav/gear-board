@@ -2,11 +2,14 @@ package com.gearboard.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -38,18 +41,23 @@ fun AbToggle(
     ) {
         AbSlot.entries.forEach { slot ->
             val isSelected = slot == currentSlot
-            Text(
-                text = slot.name,
-                color = if (isSelected) GearBoardColors.TextOnAccent else GearBoardColors.TextDisabled,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
+            Box(
                 modifier = Modifier
+                    .width(28.dp)
+                    .height(24.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(if (isSelected) accentColor else GearBoardColors.SurfaceElevated)
-                    .clickable { onSlotSelected(slot) }
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
-            )
+                    .clickable { onSlotSelected(slot) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = slot.name,
+                    color = if (isSelected) GearBoardColors.TextOnAccent else GearBoardColors.TextDisabled,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
         }
     }
 }

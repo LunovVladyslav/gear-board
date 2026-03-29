@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -132,6 +133,15 @@ fun SectionHeader(
                 contentDescription = if (expanded) "Collapse" else "Expand",
                 tint = GearBoardColors.TextSecondary,
                 modifier = Modifier.size(20.dp)
+            )
+        }
+
+        // Divider between header and content
+        if (expanded) {
+            HorizontalDivider(
+                thickness = 0.5.dp,
+                color = GearBoardColors.BorderDefault,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
 

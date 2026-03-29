@@ -187,7 +187,7 @@ fun BoardScreen(
         item {
             SectionHeader(
                 title = "Pedals",
-                enabled = boardState.pedals.any { it.enabled },
+                enabled = boardState.pedals.flatMap { it.controls }.hasAnyMapped(),
                 onToggleEnabled = {
                     boardState.pedals.forEach { viewModel.togglePedalBlockEnabled(it.id) }
                 },
@@ -258,7 +258,7 @@ fun BoardScreen(
         item {
             SectionHeader(
                 title = "Amplifier",
-                enabled = boardState.amp.enabled,
+                enabled = boardState.amp.controls.hasAnyMapped(),
                 onToggleEnabled = { viewModel.toggleAmpEnabled() },
                 expanded = ampExpanded,
                 onToggleExpanded = { viewModel.toggleAmpExpanded() },
@@ -310,7 +310,7 @@ fun BoardScreen(
         item {
             SectionHeader(
                 title = "Cabinet",
-                enabled = boardState.cabinet.enabled,
+                enabled = boardState.cabinet.controls.hasAnyMapped(),
                 onToggleEnabled = { viewModel.toggleCabEnabled() },
                 expanded = cabExpanded,
                 onToggleExpanded = { viewModel.toggleCabExpanded() },
@@ -362,7 +362,7 @@ fun BoardScreen(
         item {
             SectionHeader(
                 title = "Effects",
-                enabled = boardState.effects.any { it.enabled },
+                enabled = boardState.effects.flatMap { it.controls }.hasAnyMapped(),
                 onToggleEnabled = {
                     boardState.effects.forEach { viewModel.toggleEffectBlockEnabled(it.id) }
                 },
@@ -827,6 +827,17 @@ private fun updateControlCcNumber(control: ControlType, ccNumber: Int): ControlT
         is ControlType.Selector -> control.copy(ccNumber = ccNumber)
         is ControlType.Fader -> control.copy(ccNumber = ccNumber)
         else -> null
+    }
+}
+
+private fun List<ControlType>.hasAnyMapped(): Boolean = any { control ->
+    when (control) {
+        is ControlType.Knob -> control.ccNumber != 0
+        is ControlType.Toggle -> control.ccNumber != 0
+        is ControlType.Tap -> control.ccNumber != 0
+        is ControlType.Selector -> control.ccNumber != 0
+        is ControlType.Fader -> control.ccNumber != 0
+        is ControlType.PresetNav, is ControlType.Pad -> true
     }
 }
 

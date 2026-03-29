@@ -82,6 +82,51 @@ class BoardRepository @Inject constructor() {
         )
     }
 
+    fun switchAmpBlockAbSlot(blockId: String, targetSlot: AbSlot) {
+        val blocks = _boardState.value.ampBlocks
+        val idx = blocks.indexOfFirst { it.id == blockId }
+        if (idx < 0) return
+        val block = blocks[idx]
+        if (block.currentSlot == targetSlot) return
+
+        val currentValues = captureControlValues(block.controls)
+        val updatedAbStates = block.abStates + mapOf(block.currentSlot to currentValues)
+        val targetValues = updatedAbStates[targetSlot] ?: emptyMap()
+        val newControls = applyControlValues(block.controls, targetValues)
+
+        val updatedBlock = block.copy(currentSlot = targetSlot, controls = newControls, abStates = updatedAbStates)
+        _boardState.value = _boardState.value.copy(
+            ampBlocks = blocks.toMutableList().also { it[idx] = updatedBlock }
+        )
+    }
+
+    fun addControlToAmpBlock(blockId: String, control: ControlType) {
+        _boardState.value = _boardState.value.copy(
+            ampBlocks = _boardState.value.ampBlocks.map { block ->
+                if (block.id == blockId) block.copy(controls = block.controls + control) else block
+            }
+        )
+    }
+
+    fun removeControlFromAmpBlock(blockId: String, controlId: String) {
+        _boardState.value = _boardState.value.copy(
+            ampBlocks = _boardState.value.ampBlocks.map { block ->
+                if (block.id == blockId) block.copy(controls = block.controls.filter { it.id != controlId })
+                else block
+            }
+        )
+    }
+
+    fun updateControlInAmpBlock(blockId: String, controlId: String, updatedControl: ControlType) {
+        _boardState.value = _boardState.value.copy(
+            ampBlocks = _boardState.value.ampBlocks.map { block ->
+                if (block.id == blockId) block.copy(controls = block.controls.map {
+                    if (it.id == controlId) updatedControl else it
+                }) else block
+            }
+        )
+    }
+
     // Legacy single-block helpers — operate on first amp block, creating one if needed.
 
     fun addAmpControl(control: ControlType) {
@@ -145,6 +190,51 @@ class BoardRepository @Inject constructor() {
         _boardState.value = _boardState.value.copy(
             cabBlocks = _boardState.value.cabBlocks.map {
                 if (it.id == blockId) it.copy(name = newName) else it
+            }
+        )
+    }
+
+    fun switchCabBlockAbSlot(blockId: String, targetSlot: AbSlot) {
+        val blocks = _boardState.value.cabBlocks
+        val idx = blocks.indexOfFirst { it.id == blockId }
+        if (idx < 0) return
+        val block = blocks[idx]
+        if (block.currentSlot == targetSlot) return
+
+        val currentValues = captureControlValues(block.controls)
+        val updatedAbStates = block.abStates + mapOf(block.currentSlot to currentValues)
+        val targetValues = updatedAbStates[targetSlot] ?: emptyMap()
+        val newControls = applyControlValues(block.controls, targetValues)
+
+        val updatedBlock = block.copy(currentSlot = targetSlot, controls = newControls, abStates = updatedAbStates)
+        _boardState.value = _boardState.value.copy(
+            cabBlocks = blocks.toMutableList().also { it[idx] = updatedBlock }
+        )
+    }
+
+    fun addControlToCabBlock(blockId: String, control: ControlType) {
+        _boardState.value = _boardState.value.copy(
+            cabBlocks = _boardState.value.cabBlocks.map { block ->
+                if (block.id == blockId) block.copy(controls = block.controls + control) else block
+            }
+        )
+    }
+
+    fun removeControlFromCabBlock(blockId: String, controlId: String) {
+        _boardState.value = _boardState.value.copy(
+            cabBlocks = _boardState.value.cabBlocks.map { block ->
+                if (block.id == blockId) block.copy(controls = block.controls.filter { it.id != controlId })
+                else block
+            }
+        )
+    }
+
+    fun updateControlInCabBlock(blockId: String, controlId: String, updatedControl: ControlType) {
+        _boardState.value = _boardState.value.copy(
+            cabBlocks = _boardState.value.cabBlocks.map { block ->
+                if (block.id == blockId) block.copy(controls = block.controls.map {
+                    if (it.id == controlId) updatedControl else it
+                }) else block
             }
         )
     }

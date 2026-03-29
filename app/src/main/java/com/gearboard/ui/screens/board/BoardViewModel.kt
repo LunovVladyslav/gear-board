@@ -7,6 +7,8 @@ import com.gearboard.data.repository.ControlRepository
 import com.gearboard.data.repository.SettingsRepository
 import com.gearboard.domain.model.AbSlot
 import com.gearboard.domain.model.AmpBlock
+import com.gearboard.domain.model.BlockAppearance
+import com.gearboard.domain.model.BlockLayout
 import com.gearboard.domain.model.BoardState
 import com.gearboard.domain.model.CabBlock
 import com.gearboard.domain.model.ControlBlock
@@ -65,6 +67,12 @@ class BoardViewModel @Inject constructor(
 
     private val _showAddEffectBlockDialog = MutableStateFlow(false)
     val showAddEffectBlockDialog: StateFlow<Boolean> = _showAddEffectBlockDialog.asStateFlow()
+
+    private val _showAddAmpBlockDialog = MutableStateFlow(false)
+    val showAddAmpBlockDialog: StateFlow<Boolean> = _showAddAmpBlockDialog.asStateFlow()
+
+    private val _showAddCabBlockDialog = MutableStateFlow(false)
+    val showAddCabBlockDialog: StateFlow<Boolean> = _showAddCabBlockDialog.asStateFlow()
 
     private val _showOnboarding = MutableStateFlow(false)
     val showOnboarding: StateFlow<Boolean> = _showOnboarding.asStateFlow()
@@ -146,7 +154,93 @@ class BoardViewModel @Inject constructor(
         }
     }
 
-    // --- Amp ---
+    // --- Amp blocks (block-keyed) ---
+    fun addAmpBlock(block: AmpBlock) {
+        boardRepository.addAmpBlock(block)
+        _showAddAmpBlockDialog.value = false
+        triggerAutoSave()
+    }
+
+    fun removeAmpBlock(blockId: String) {
+        boardRepository.removeAmpBlock(blockId)
+        triggerAutoSave()
+    }
+
+    fun renameAmpBlock(blockId: String, name: String) {
+        boardRepository.renameAmpBlock(blockId, name)
+        triggerAutoSave()
+    }
+
+    fun switchAmpBlockAbSlot(blockId: String, slot: AbSlot) {
+        boardRepository.switchAmpBlockAbSlot(blockId, slot)
+        boardRepository.boardState.value.ampBlocks.find { it.id == blockId }?.controls?.forEach { sendControlMidi(it) }
+    }
+
+    fun addAmpBlockControl(blockId: String, control: ControlType) {
+        boardRepository.addControlToAmpBlock(blockId, control)
+        triggerAutoSave()
+    }
+
+    fun updateAmpBlockControl(blockId: String, controlId: String, updated: ControlType) {
+        boardRepository.updateControlInAmpBlock(blockId, controlId, updated)
+        triggerAutoSave()
+    }
+
+    fun removeAmpBlockControl(blockId: String, controlId: String) {
+        boardRepository.removeControlFromAmpBlock(blockId, controlId)
+        triggerAutoSave()
+    }
+
+    fun updateAmpBlockAppearance(blockId: String, appearance: BlockAppearance, layout: BlockLayout) {
+        val block = boardRepository.getCurrentState().ampBlocks.find { it.id == blockId } ?: return
+        boardRepository.updateAmpBlock(block.copy(appearance = appearance, layoutMode = layout))
+        triggerAutoSave()
+    }
+
+    // --- Cab blocks (block-keyed) ---
+    fun addCabBlock(block: CabBlock) {
+        boardRepository.addCabBlock(block)
+        _showAddCabBlockDialog.value = false
+        triggerAutoSave()
+    }
+
+    fun removeCabBlock(blockId: String) {
+        boardRepository.removeCabBlock(blockId)
+        triggerAutoSave()
+    }
+
+    fun renameCabBlock(blockId: String, name: String) {
+        boardRepository.renameCabBlock(blockId, name)
+        triggerAutoSave()
+    }
+
+    fun switchCabBlockAbSlot(blockId: String, slot: AbSlot) {
+        boardRepository.switchCabBlockAbSlot(blockId, slot)
+        boardRepository.boardState.value.cabBlocks.find { it.id == blockId }?.controls?.forEach { sendControlMidi(it) }
+    }
+
+    fun addCabBlockControl(blockId: String, control: ControlType) {
+        boardRepository.addControlToCabBlock(blockId, control)
+        triggerAutoSave()
+    }
+
+    fun updateCabBlockControl(blockId: String, controlId: String, updated: ControlType) {
+        boardRepository.updateControlInCabBlock(blockId, controlId, updated)
+        triggerAutoSave()
+    }
+
+    fun removeCabBlockControl(blockId: String, controlId: String) {
+        boardRepository.removeControlFromCabBlock(blockId, controlId)
+        triggerAutoSave()
+    }
+
+    fun updateCabBlockAppearance(blockId: String, appearance: BlockAppearance, layout: BlockLayout) {
+        val block = boardRepository.getCurrentState().cabBlocks.find { it.id == blockId } ?: return
+        boardRepository.updateCabBlock(block.copy(appearance = appearance, layoutMode = layout))
+        triggerAutoSave()
+    }
+
+    // --- Amp (legacy / first-block helpers) ---
     fun toggleAmpEnabled() {
         // AmpBlock has no enabled flag; no-op at section level.
     }
@@ -406,6 +500,10 @@ class BoardViewModel @Inject constructor(
     fun hideAddPedalBlockDialog() { _showAddPedalBlockDialog.value = false }
     fun showAddEffectBlockDialog() { _showAddEffectBlockDialog.value = true }
     fun hideAddEffectBlockDialog() { _showAddEffectBlockDialog.value = false }
+    fun showAddAmpBlockDialog() { _showAddAmpBlockDialog.value = true }
+    fun hideAddAmpBlockDialog() { _showAddAmpBlockDialog.value = false }
+    fun showAddCabBlockDialog() { _showAddCabBlockDialog.value = true }
+    fun hideAddCabBlockDialog() { _showAddCabBlockDialog.value = false }
     fun hideOnboarding() { _showOnboarding.value = false }
 
     // --- Persistence ---

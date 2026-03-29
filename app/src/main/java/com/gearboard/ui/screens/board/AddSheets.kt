@@ -18,15 +18,25 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Adjust
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Equalizer
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Loop
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Piano
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Waves
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -49,6 +59,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gearboard.domain.model.AmpBlock
+import com.gearboard.domain.model.AmpTemplates
+import com.gearboard.domain.model.CabBlock
+import com.gearboard.domain.model.CabTemplates
 import com.gearboard.domain.model.ControlBlock
 import com.gearboard.domain.model.ControlType
 import com.gearboard.domain.model.FaderOrientation
@@ -361,30 +375,54 @@ private fun TemplateGridCard(
 }
 
 // ---------------------------------------------------------------------------
-// Amp / Cab block sheets — stubs replaced in Step 7
+// Amp / Cab block sheets
 // ---------------------------------------------------------------------------
 
+private val ampTemplateIcons: Map<String, ImageVector> = mapOf(
+    "Clean American" to Icons.Default.LightMode,
+    "British Crunch" to Icons.Default.Bolt,
+    "British Class A" to Icons.Default.Star,
+    "High Gain" to Icons.Default.Whatshot,
+    "Modern High Gain" to Icons.Default.GraphicEq,
+    "Bass Amp" to Icons.Default.Piano,
+    "Create Empty" to Icons.Default.Add
+)
+
+private val cabTemplateIcons: Map<String, ImageVector> = mapOf(
+    "1×12 Open" to Icons.Default.RadioButtonUnchecked,
+    "2×12 Closed" to Icons.Default.Adjust,
+    "4×12 Closed" to Icons.Default.Apps,
+    "Bass 1×15" to Icons.Default.MusicNote,
+    "Bass 4×10" to Icons.Default.GridView,
+    "Create Empty" to Icons.Default.Add
+)
+
 /**
- * AddAmpBlockSheet — bottom sheet for choosing an amp block template.
- * Full implementation in Step 7; this stub is required for Step 6 to compile.
+ * AddAmpBlockSheet — template picker for adding an amp block.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAmpBlockSheet(
-    onAddBlock: (com.gearboard.domain.model.AmpBlock) -> Unit,
+    onAddBlock: (AmpBlock) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // "Create Empty" first, then all templates with fresh IDs
+    val entries: List<Pair<String, AmpBlock?>> =
+        listOf("Create Empty" to null) +
+        AmpTemplates.all.map { it.name to it.copy(id = java.util.UUID.randomUUID().toString()) }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = GearBoardColors.Surface
     ) {
-        androidx.compose.foundation.layout.Column(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 "ADD AMPLIFIER BLOCK",
@@ -392,37 +430,57 @@ fun AddAmpBlockSheet(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp
             )
-            Text(
-                "Template picker coming soon.",
-                color = GearBoardColors.TextSecondary,
-                fontSize = 12.sp
-            )
-            Spacer(Modifier.height(16.dp))
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                itemsIndexed(entries) { _, (name, block) ->
+                    TemplateGridCard(
+                        name = name,
+                        controlCount = block?.controls?.size ?: 0,
+                        icon = ampTemplateIcons[name] ?: Icons.Default.Add,
+                        onClick = {
+                            val toAdd = block ?: AmpBlock(name = "Amplifier")
+                            onAddBlock(toAdd)
+                            onDismiss()
+                        }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
 
 /**
- * AddCabBlockSheet — bottom sheet for choosing a cab block template.
- * Full implementation in Step 7; this stub is required for Step 6 to compile.
+ * AddCabBlockSheet — template picker for adding a cabinet block.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCabBlockSheet(
-    onAddBlock: (com.gearboard.domain.model.CabBlock) -> Unit,
+    onAddBlock: (CabBlock) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val entries: List<Pair<String, CabBlock?>> =
+        listOf("Create Empty" to null) +
+        CabTemplates.all.map { it.name to it.copy(id = java.util.UUID.randomUUID().toString()) }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = GearBoardColors.Surface
     ) {
-        androidx.compose.foundation.layout.Column(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 "ADD CABINET BLOCK",
@@ -430,12 +488,28 @@ fun AddCabBlockSheet(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp
             )
-            Text(
-                "Template picker coming soon.",
-                color = GearBoardColors.TextSecondary,
-                fontSize = 12.sp
-            )
-            Spacer(Modifier.height(16.dp))
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                itemsIndexed(entries) { _, (name, block) ->
+                    TemplateGridCard(
+                        name = name,
+                        controlCount = block?.controls?.size ?: 0,
+                        icon = cabTemplateIcons[name] ?: Icons.Default.Add,
+                        onClick = {
+                            val toAdd = block ?: CabBlock(name = "Cabinet")
+                            onAddBlock(toAdd)
+                            onDismiss()
+                        }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
         }
     }
 }

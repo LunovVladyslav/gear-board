@@ -212,7 +212,7 @@ fun RenderControlList(
                     columns = GridCells.Adaptive(minSize = 80.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = modifier.heightIn(max = 400.dp)
+                    modifier = modifier.fillMaxWidth().heightIn(max = 400.dp)
                 ) {
                     items(controls) { control ->
                         RenderControl(
@@ -262,7 +262,7 @@ fun RenderControlList(
                     columns = GridCells.Fixed(3),
                     horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = modifier.heightIn(max = 200.dp)
+                    modifier = modifier.fillMaxWidth().heightIn(max = 200.dp)
                 ) {
                     items(controls) { control ->
                         RenderControl(

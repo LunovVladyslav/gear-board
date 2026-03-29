@@ -170,7 +170,7 @@ fun AmpBlockCard(
         Column(
             modifier = modifier
                 .padding(4.dp)
-                .widthIn(min = GearBoardDimensions.PedalCardWidth)
+                .widthIn(min = GearBoardDimensions.PedalCardWidth, max = GearBoardDimensions.PedalCardMaxWidth)
                 .clip(RoundedCornerShape(GearBoardDimensions.RadiusM))
                 .background(GearBoardColors.Surface)
                 .border(
@@ -394,7 +394,7 @@ fun CabBlockCard(
         Column(
             modifier = modifier
                 .padding(4.dp)
-                .widthIn(min = GearBoardDimensions.PedalCardWidth)
+                .widthIn(min = GearBoardDimensions.PedalCardWidth, max = GearBoardDimensions.PedalCardMaxWidth)
                 .clip(RoundedCornerShape(GearBoardDimensions.RadiusM))
                 .background(GearBoardColors.Surface)
                 .border(

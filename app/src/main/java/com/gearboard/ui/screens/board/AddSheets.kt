@@ -435,7 +435,7 @@ fun AddAmpBlockSheet(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(300.dp)
             ) {
                 itemsIndexed(entries) { _, (name, block) ->
                     TemplateGridCard(
@@ -493,7 +493,7 @@ fun AddCabBlockSheet(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(300.dp)
             ) {
                 itemsIndexed(entries) { _, (name, block) ->
                     TemplateGridCard(

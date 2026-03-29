@@ -10,11 +10,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gearboard.ui.theme.GearBoardColors
@@ -99,8 +105,9 @@ fun ConnectionStatusBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(GearBoardDimensions.TopBarHeight)
             .background(GearBoardColors.Surface)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .height(GearBoardDimensions.TopBarHeight)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -135,6 +142,42 @@ fun ConnectionStatusBar(
                 fontSize = 11.sp,
                 maxLines = 1
             )
+        }
+    }
+}
+
+/**
+ * GearBoardTopBar — shared top bar used by Presets, MidiMap, and Settings screens.
+ * Matches the Board screen's top bar: 48dp height, Surface background, "GEARBOARD" left.
+ * Does NOT add statusBarsPadding — the parent Scaffold/layout is responsible for
+ * positioning this below the system status bar.
+ *
+ * @param actions optional right-side content (icons, buttons, etc.)
+ */
+@Composable
+fun GearBoardTopBar(
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    Surface(
+        color = GearBoardColors.Surface,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(GearBoardDimensions.TopBarHeight)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "GEARBOARD",
+                color = GearBoardColors.Accent,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 3.sp,
+                modifier = Modifier.weight(1f)
+            )
+            actions()
         }
     }
 }

@@ -63,7 +63,13 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-                val showGlobalTopBar = currentRoute != Screen.Board.route && currentRoute != Screen.GuidedSetup.route
+                val showGlobalTopBar = currentRoute !in setOf(
+                    Screen.Board.route,
+                    Screen.GuidedSetup.route,
+                    Screen.Presets.route,
+                    Screen.MidiMap.route,
+                    Screen.Settings.route
+                )
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),

@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gearboard.domain.model.Preset
+import com.gearboard.ui.components.GearBoardTopBar
 import com.gearboard.ui.theme.GearBoardColors
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -112,41 +114,27 @@ fun PresetScreen(
         }
     }
 
+    Scaffold(
+        topBar = {
+            GearBoardTopBar(actions = {
+                IconButton(onClick = { viewModel.showSaveDialog() }) {
+                    Icon(Icons.Default.Add, "New Preset", tint = GearBoardColors.Accent)
+                }
+                IconButton(onClick = { importLauncher.launch(arrayOf("application/json")) }) {
+                    Icon(Icons.Default.Download, "Import", tint = GearBoardColors.TextSecondary)
+                }
+            })
+        }
+    ) { innerPadding ->
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(GearBoardColors.Background),
+            .background(GearBoardColors.Background)
+            .padding(innerPadding),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Header + action buttons
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "PRESETS",
-                    color = GearBoardColors.Accent,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 3.sp
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    // Save current
-                    IconButton(onClick = { viewModel.showSaveDialog() }) {
-                        Icon(Icons.Default.Add, "New Preset", tint = GearBoardColors.Accent)
-                    }
-                    // Import
-                    IconButton(onClick = { importLauncher.launch(arrayOf("application/json")) }) {
-                        Icon(Icons.Default.Download, "Import", tint = GearBoardColors.TextSecondary)
-                    }
-                }
-            }
-        }
-
-        // Preset count
+        // Preset count (first content item — large "PRESETS" title removed)
         item {
             Text(
                 "${presets.size} preset${if (presets.size != 1) "s" else ""}",
@@ -186,6 +174,8 @@ fun PresetScreen(
         }
     }
 
+    } // end LazyColumn
+
     // Save dialog
     if (showSaveDialog) {
         SavePresetDialog(
@@ -193,6 +183,7 @@ fun PresetScreen(
             onDismiss = { viewModel.hideSaveDialog() }
         )
     }
+    } // end Scaffold
 }
 
 @Composable

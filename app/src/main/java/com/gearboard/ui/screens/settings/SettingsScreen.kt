@@ -40,6 +40,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -65,6 +66,7 @@ import com.gearboard.midi.BleMidiPeripheral
 import com.gearboard.midi.BleMidiScanner
 import com.gearboard.ui.components.ConnectionState
 import com.gearboard.ui.components.ConnectionType
+import com.gearboard.ui.components.GearBoardTopBar
 import com.gearboard.ui.theme.GearBoardColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,23 +111,17 @@ fun SettingsScreen(
         if (permissions.values.all { it }) connectionViewModel.startAdvertising()
     }
 
+    Scaffold(
+        topBar = { GearBoardTopBar() }
+    ) { innerPadding ->
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(GearBoardColors.Background),
+            .background(GearBoardColors.Background)
+            .padding(innerPadding),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item {
-            Text(
-                "SETTINGS",
-                color = GearBoardColors.Accent,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 3.sp
-            )
-        }
-
         // ═══════════════════════════════════════
         // CONNECTION SECTION
         // ═══════════════════════════════════════
@@ -468,6 +464,7 @@ fun SettingsScreen(
             )
         }
     }
+    } // end Scaffold
 }
 
 // ═══════════════════════════════════════

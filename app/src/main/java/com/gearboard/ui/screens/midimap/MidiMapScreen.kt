@@ -33,6 +33,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gearboard.domain.model.MidiMapping
+import com.gearboard.ui.components.GearBoardTopBar
 import com.gearboard.ui.theme.GearBoardColors
 
 @Composable
@@ -66,7 +68,10 @@ fun MidiMapScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        topBar = { GearBoardTopBar() }
+    ) { innerPadding ->
+    Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -74,29 +79,7 @@ fun MidiMapScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Header
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "MIDI MAPPING",
-                        color = GearBoardColors.Accent,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 3.sp
-                    )
-                    if (mappings.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.deleteAllMappings() }) {
-                            Icon(Icons.Default.DeleteSweep, "Clear All", tint = GearBoardColors.DangerText)
-                        }
-                    }
-                }
-            }
-
-            // Info text
+            // Description (first content item — replaces old large title block)
             item {
                 Text(
                     "Assign MIDI CC numbers to controls. Use Learn mode to auto-detect from incoming MIDI.",
@@ -104,6 +87,19 @@ fun MidiMapScreen(
                     fontSize = 12.sp,
                     lineHeight = 16.sp
                 )
+            }
+
+            if (mappings.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        IconButton(onClick = { viewModel.deleteAllMappings() }) {
+                            Icon(Icons.Default.DeleteSweep, "Clear All", tint = GearBoardColors.DangerText)
+                        }
+                    }
+                }
             }
 
             item { Spacer(Modifier.height(4.dp)) }
@@ -150,6 +146,7 @@ fun MidiMapScreen(
             )
         }
     }
+    } // end Scaffold
 }
 
 @Composable

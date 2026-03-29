@@ -749,11 +749,9 @@ private fun AddButton(text: String, onClick: () -> Unit) {
 private fun applyOnboardingTemplate(template: OnboardingTemplate, viewModel: BoardViewModel) {
     when (template) {
         OnboardingTemplate.GUITAR_AMP_SIM -> {
-            // Pedals: Overdrive block
             viewModel.addPedalBlock(
                 com.gearboard.domain.model.ControlBlock(
-                    name = "Overdrive",
-                    type = "Distortion",
+                    name = "Overdrive", type = "Distortion",
                     controls = listOf(
                         ControlType.Knob(label = "Drive", ccNumber = 0),
                         ControlType.Knob(label = "Tone", ccNumber = 0),
@@ -763,29 +761,11 @@ private fun applyOnboardingTemplate(template: OnboardingTemplate, viewModel: Boa
                     )
                 )
             )
-            // Amp controls
-            listOf(
-                ControlType.Knob(label = "Gain", ccNumber = 0),
-                ControlType.Knob(label = "Bass", ccNumber = 0),
-                ControlType.Knob(label = "Mid", ccNumber = 0),
-                ControlType.Knob(label = "Treble", ccNumber = 0),
-                ControlType.Knob(label = "Presence", ccNumber = 0),
-                ControlType.Knob(label = "Master", ccNumber = 0),
-                ControlType.Toggle(label = "Channel", ccNumber = 0, pulseMode = false)
-            ).forEach { viewModel.addAmpControl(it) }
-
-            // Cab controls
-            listOf(
-                ControlType.Selector(label = "Model", ccNumber = 0, positions = listOf("4x12", "2x12")),
-                ControlType.Selector(label = "Mic", ccNumber = 0, positions = listOf("SM57", "MD421")),
-                ControlType.Fader(label = "Position", ccNumber = 0)
-            ).forEach { viewModel.addCabControl(it) }
-
-            // Effects: Delay block
+            viewModel.addAmpBlock(com.gearboard.domain.model.AmpTemplates.HIGH_GAIN)
+            viewModel.addCabBlock(com.gearboard.domain.model.CabTemplates.CLOSED_BACK_412)
             viewModel.addEffectBlock(
                 com.gearboard.domain.model.ControlBlock(
-                    name = "Delay",
-                    type = "Time",
+                    name = "Delay", type = "Time",
                     controls = listOf(
                         ControlType.Knob(label = "Time", ccNumber = 0),
                         ControlType.Knob(label = "Feedback", ccNumber = 0),
@@ -797,11 +777,9 @@ private fun applyOnboardingTemplate(template: OnboardingTemplate, viewModel: Boa
             )
         }
         OnboardingTemplate.BASS_AMP_SIM -> {
-            // Pedals: Overdrive block
             viewModel.addPedalBlock(
                 com.gearboard.domain.model.ControlBlock(
-                    name = "Overdrive",
-                    type = "Bass OD",
+                    name = "Overdrive", type = "Bass OD",
                     controls = listOf(
                         ControlType.Knob(label = "Drive", ccNumber = 0),
                         ControlType.Knob(label = "Blend", ccNumber = 0),
@@ -810,20 +788,8 @@ private fun applyOnboardingTemplate(template: OnboardingTemplate, viewModel: Boa
                     )
                 )
             )
-            // Amp controls
-            listOf(
-                ControlType.Knob(label = "Gain", ccNumber = 0),
-                ControlType.Knob(label = "Bass", ccNumber = 0),
-                ControlType.Knob(label = "Mid", ccNumber = 0),
-                ControlType.Knob(label = "Treble", ccNumber = 0),
-                ControlType.Knob(label = "Master", ccNumber = 0)
-            ).forEach { viewModel.addAmpControl(it) }
-
-            // Cab controls
-            listOf(
-                ControlType.Selector(label = "Model", ccNumber = 0, positions = listOf("8x10", "4x10")),
-                ControlType.Selector(label = "Mic", ccNumber = 0, positions = listOf("RE20", "U47"))
-            ).forEach { viewModel.addCabControl(it) }
+            viewModel.addAmpBlock(com.gearboard.domain.model.AmpTemplates.BASS_AMP)
+            viewModel.addCabBlock(com.gearboard.domain.model.CabTemplates.BASS_410)
         }
         OnboardingTemplate.MULTI_FX_BOARD -> {
             // Pedals: Compressor + Overdrive
@@ -849,14 +815,8 @@ private fun applyOnboardingTemplate(template: OnboardingTemplate, viewModel: Boa
                     )
                 )
             )
-            // Amp
-            listOf(
-                ControlType.Knob(label = "Gain", ccNumber = 0),
-                ControlType.Knob(label = "Bass", ccNumber = 0),
-                ControlType.Knob(label = "Mid", ccNumber = 0),
-                ControlType.Knob(label = "Treble", ccNumber = 0),
-                ControlType.Knob(label = "Master", ccNumber = 0)
-            ).forEach { viewModel.addAmpControl(it) }
+            viewModel.addAmpBlock(com.gearboard.domain.model.AmpTemplates.MODERN_HIGH_GAIN)
+            viewModel.addCabBlock(com.gearboard.domain.model.CabTemplates.CLOSED_BACK_212)
             // Effects: Chorus + Delay + Reverb
             viewModel.addEffectBlock(
                 com.gearboard.domain.model.ControlBlock(

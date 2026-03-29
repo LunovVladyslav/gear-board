@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -67,10 +68,11 @@ fun SectionHeader(
                 shape = RoundedCornerShape(GearBoardDimensions.RadiusM)
             )
     ) {
-        // Header bar
+        // Header bar — fixed 48dp height matching the top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(GearBoardDimensions.TopBarHeight)
                 .background(
                     brush = Brush.horizontalGradient(
                         colors = listOf(GearBoardColors.Surface, GearBoardColors.SurfaceVariant)
@@ -86,7 +88,7 @@ fun SectionHeader(
                         bottomEnd = 0.dp
                     )
                 )
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -125,11 +127,15 @@ fun SectionHeader(
             }
 
             // Expand/collapse chevron
-            IconButton(onClick = onToggleExpanded) {
+            IconButton(
+                onClick = onToggleExpanded,
+                modifier = Modifier.size(36.dp)
+            ) {
                 Icon(
                     imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = if (expanded) "Collapse" else "Expand",
-                    tint = GearBoardColors.TextSecondary
+                    tint = GearBoardColors.TextSecondary,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }

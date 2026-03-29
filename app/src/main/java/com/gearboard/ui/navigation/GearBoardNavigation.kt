@@ -121,7 +121,12 @@ fun GearBoardNavHost(
             BoardScreen(
                 onSettingsClick = {
                     navController.navigate(Screen.Settings.route) {
+                        popUpTo(Screen.Board.route) {
+                            saveState = true
+                            inclusive = false
+                        }
                         launchSingleTop = true
+                        restoreState = true
                     }
                 }
             )

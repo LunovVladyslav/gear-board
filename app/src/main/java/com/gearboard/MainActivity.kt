@@ -68,7 +68,8 @@ class MainActivity : ComponentActivity() {
                     Screen.GuidedSetup.route,
                     Screen.Presets.route,
                     Screen.MidiMap.route,
-                    Screen.Settings.route
+                    Screen.Settings.route,
+                    Screen.Live.route
                 )
 
                 Scaffold(

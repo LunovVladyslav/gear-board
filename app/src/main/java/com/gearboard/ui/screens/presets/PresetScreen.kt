@@ -174,8 +174,6 @@ fun PresetScreen(
         }
     }
 
-    } // end LazyColumn
-
     // Save dialog
     if (showSaveDialog) {
         SavePresetDialog(
@@ -183,7 +181,7 @@ fun PresetScreen(
             onDismiss = { viewModel.hideSaveDialog() }
         )
     }
-    } // end Scaffold
+    }
 }
 
 @Composable

@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cable
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Piano
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sensors
@@ -24,6 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.gearboard.ui.screens.board.BoardScreen
 import com.gearboard.ui.screens.connect.ConnectScreen
+import com.gearboard.ui.screens.live.LiveModeScreen
 import com.gearboard.ui.screens.midimap.MidiMapScreen
 import com.gearboard.ui.screens.monitor.MonitorScreen
 import com.gearboard.ui.screens.presets.PresetScreen
@@ -41,6 +43,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     data object MidiMap : Screen("midi_map", "MIDI Map", Icons.Default.Piano)
     data object Monitor : Screen("monitor", "Monitor", Icons.Default.Sensors)
     data object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    data object Live : Screen("live", "Live", Icons.Default.MusicNote)
     data object GuidedSetup : Screen("guided_setup", "Setup", Icons.Default.Settings)
 }
 
@@ -48,6 +51,7 @@ val bottomNavItems = listOf(
     Screen.Board,
     Screen.Presets,
     Screen.MidiMap,
+    Screen.Live,
     Screen.Settings
 )
 
@@ -134,6 +138,7 @@ fun GearBoardNavHost(
         composable(Screen.Connect.route) { ConnectScreen() }
         composable(Screen.Presets.route) { PresetScreen() }
         composable(Screen.MidiMap.route) { MidiMapScreen() }
+        composable(Screen.Live.route) { LiveModeScreen() }
         composable(Screen.Monitor.route) { MonitorScreen() }
         composable(Screen.Settings.route) {
             SettingsScreen(

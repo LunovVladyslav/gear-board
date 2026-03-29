@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.gearboard.data.local.GearBoardDatabase
 import com.gearboard.data.local.dao.ControlItemDao
+import com.gearboard.data.local.dao.LiveModeDao
 import com.gearboard.data.local.dao.MidiMappingDao
 import com.gearboard.data.local.dao.PresetDao
 import com.google.gson.Gson
@@ -50,5 +51,10 @@ object DatabaseModule {
     @Singleton
     fun provideGson(): Gson {
         return GsonBuilder().create()
+    }
+
+    @Provides
+    fun provideLiveModeDao(database: GearBoardDatabase): LiveModeDao {
+        return database.liveModeDao()
     }
 }

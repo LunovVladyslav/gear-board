@@ -58,6 +58,9 @@ class GearBoardMidiManager @Inject constructor(
     // MIDI channel (0-15)
     var midiChannel: Int = 0
 
+    /** Live Mode clock receiver — set by LiveModeViewModel when synced mode is active. */
+    var clockReceiver: com.gearboard.midi.MidiClockReceiver? = null
+
     private val handler = Handler(Looper.getMainLooper())
 
     // Device callback for USB hotplug
@@ -251,6 +254,24 @@ class GearBoardMidiManager @Inject constructor(
     }
 
     /**
+     * Send Bank Select + Program Change for a preset.
+     * Bank Select: CC 0 (MSB) = bank / 128, CC 32 (LSB) = bank % 128, then PC.
+     */
+    fun sendPreset(bank: Int, program: Int) {
+        val ch = midiChannel.coerceIn(0, 15)
+        val bankMsb = (bank / 128).coerceIn(0, 127)
+        val bankLsb = (bank % 128).coerceIn(0, 127)
+        val prog = program.coerceIn(0, 127)
+        // Bank Select MSB (CC 0)
+        sendMidiData(byteArrayOf((0xB0 or ch).toByte(), 0x00, bankMsb.toByte()))
+        // Bank Select LSB (CC 32)
+        sendMidiData(byteArrayOf((0xB0 or ch).toByte(), 0x20, bankLsb.toByte()))
+        // Program Change
+        sendMidiData(byteArrayOf((0xC0 or ch).toByte(), prog.toByte()))
+        Log.d(TAG, "sendPreset: bank=$bank prog=$program ch=$ch")
+    }
+
+    /**
      * Send a Note Off message.
      * @param note 0-127
      * @param channel 1-16 (MIDI channel)
@@ -303,6 +324,23 @@ class GearBoardMidiManager @Inject constructor(
     private val midiReceiver = object : MidiReceiver() {
         override fun onSend(data: ByteArray, offset: Int, count: Int, timestamp: Long) {
             if (count < 1) return
+
+            // Route system real-time single-byte messages to clock receiver
+            val firstByte = data[offset].toInt() and 0xFF
+            when (firstByte) {
+                0xF8 -> { clockReceiver?.onTick(timestamp / 1_000_000); return }
+                0xFA -> { clockReceiver?.onStart(); return }
+                0xFB -> { clockReceiver?.onContinue(); return }
+                0xFC -> { clockReceiver?.onStop(); return }
+                0xF2 -> {
+                    if (count >= 3) {
+                        val lsb = data[offset + 1].toInt() and 0x7F
+                        val msb = data[offset + 2].toInt() and 0x7F
+                        clockReceiver?.onSongPositionPointer(lsb, msb)
+                    }
+                    return
+                }
+            }
 
             val statusByte = data[offset].toInt() and 0xFF
             val channel = statusByte and 0x0F
@@ -392,6 +430,24 @@ class GearBoardMidiManager @Inject constructor(
     private fun parseMidiBytes(data: ByteArray, direction: MidiDirection) {
         if (data.isEmpty()) return
         val statusByte = data[0].toInt() and 0xFF
+
+        // System Real-Time messages — single byte, no channel
+        when (statusByte) {
+            0xF8 -> { clockReceiver?.onTick(System.currentTimeMillis()); return }
+            0xFA -> { clockReceiver?.onStart(); return }
+            0xFB -> { clockReceiver?.onContinue(); return }
+            0xFC -> { clockReceiver?.onStop(); return }
+            0xF2 -> {
+                // Song Position Pointer — 3 bytes: 0xF2, LSB, MSB
+                if (data.size >= 3) {
+                    val lsb = data[1].toInt() and 0x7F
+                    val msb = data[2].toInt() and 0x7F
+                    clockReceiver?.onSongPositionPointer(lsb, msb)
+                }
+                return
+            }
+        }
+
         val channel = statusByte and 0x0F
         val messageType = statusByte and 0xF0
         val d1 = if (data.size >= 2) data[1].toInt() and 0x7F else 0

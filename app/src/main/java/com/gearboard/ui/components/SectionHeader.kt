@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -68,7 +67,9 @@ fun SectionHeader(
                 shape = RoundedCornerShape(GearBoardDimensions.RadiusM)
             )
     ) {
-        // Header bar — fixed 48dp height matching the top bar
+        // Header bar — tapping anywhere toggles expand; dot tap toggles on/off.
+        // Plain Icon (no IconButton) so Material3 minimum-touch-target enforcement
+        // cannot inflate the row beyond the explicit height constraint.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -88,6 +89,7 @@ fun SectionHeader(
                         bottomEnd = 0.dp
                     )
                 )
+                .clickable { onToggleExpanded() }
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -96,7 +98,7 @@ fun SectionHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // On/off indicator dot
+                // On/off indicator dot — intercepts its own tap, does not bubble to row
                 Box(
                     modifier = Modifier
                         .size(GearBoardDimensions.SectionDotSize)
@@ -105,14 +107,12 @@ fun SectionHeader(
                             if (enabled) GearBoardColors.OnIndicator else GearBoardColors.OffIndicator
                         )
                         .then(
-                            if (enabled) {
-                                Modifier.shadow(
-                                    elevation = 4.dp,
-                                    shape = CircleShape,
-                                    ambientColor = GearBoardColors.AccentGlow,
-                                    spotColor = GearBoardColors.AccentGlow
-                                )
-                            } else Modifier
+                            if (enabled) Modifier.shadow(
+                                elevation = 4.dp,
+                                shape = CircleShape,
+                                ambientColor = GearBoardColors.AccentGlow,
+                                spotColor = GearBoardColors.AccentGlow
+                            ) else Modifier
                         )
                         .clickable { onToggleEnabled() }
                 )
@@ -126,18 +126,13 @@ fun SectionHeader(
                 )
             }
 
-            // Expand/collapse chevron
-            IconButton(
-                onClick = onToggleExpanded,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (expanded) "Collapse" else "Expand",
-                    tint = GearBoardColors.TextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            // Chevron — plain Icon, no IconButton wrapper
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                tint = GearBoardColors.TextSecondary,
+                modifier = Modifier.size(20.dp)
+            )
         }
 
         // Collapsible content

@@ -6,9 +6,9 @@ import com.gearboard.data.repository.BoardRepository
 import com.gearboard.data.repository.ControlRepository
 import com.gearboard.data.repository.SettingsRepository
 import com.gearboard.domain.model.AbSlot
-import com.gearboard.domain.model.AmpSettings
+import com.gearboard.domain.model.AmpBlock
 import com.gearboard.domain.model.BoardState
-import com.gearboard.domain.model.CabinetSettings
+import com.gearboard.domain.model.CabBlock
 import com.gearboard.domain.model.ControlBlock
 import com.gearboard.domain.model.ControlType
 import com.gearboard.domain.model.SectionType
@@ -148,25 +148,23 @@ class BoardViewModel @Inject constructor(
 
     // --- Amp ---
     fun toggleAmpEnabled() {
-        val amp = boardRepository.getCurrentState().amp
-        boardRepository.updateAmp(amp.copy(enabled = !amp.enabled))
+        // AmpBlock has no enabled flag; no-op at section level.
     }
 
     fun updateAmpAppearance(appearance: com.gearboard.domain.model.BlockAppearance, layout: com.gearboard.domain.model.BlockLayout) {
-        val amp = boardRepository.getCurrentState().amp
-        boardRepository.updateAmp(amp.copy(appearance = appearance, layoutMode = layout))
+        val block = boardRepository.getCurrentState().ampBlocks.firstOrNull() ?: return
+        boardRepository.updateAmpBlock(block.copy(appearance = appearance, layoutMode = layout))
         triggerAutoSave()
     }
 
     // --- Cabinet ---
     fun toggleCabEnabled() {
-        val cab = boardRepository.getCurrentState().cabinet
-        boardRepository.updateCabinet(cab.copy(enabled = !cab.enabled))
+        // CabBlock has no enabled flag; no-op at section level.
     }
 
     fun updateCabAppearance(appearance: com.gearboard.domain.model.BlockAppearance, layout: com.gearboard.domain.model.BlockLayout) {
-        val cab = boardRepository.getCurrentState().cabinet
-        boardRepository.updateCabinet(cab.copy(appearance = appearance, layoutMode = layout))
+        val block = boardRepository.getCurrentState().cabBlocks.firstOrNull() ?: return
+        boardRepository.updateCabBlock(block.copy(appearance = appearance, layoutMode = layout))
         triggerAutoSave()
     }
 
@@ -433,20 +431,22 @@ class BoardViewModel @Inject constructor(
             }
         }
 
-        // Persist amp controls
-        val ampBlockId = "amp_main"
-        state.amp.controls.forEachIndexed { idx, control ->
-            controlRepository.insert(
-                controlRepository.toEntity(control, SectionType.AMP, ampBlockId, idx)
-            )
+        // Persist amp blocks
+        state.ampBlocks.forEach { block ->
+            block.controls.forEachIndexed { idx, control ->
+                controlRepository.insert(
+                    controlRepository.toEntity(control, SectionType.AMP, block.id, idx)
+                )
+            }
         }
 
-        // Persist cab controls
-        val cabBlockId = "cab_main"
-        state.cabinet.controls.forEachIndexed { idx, control ->
-            controlRepository.insert(
-                controlRepository.toEntity(control, SectionType.CAB, cabBlockId, idx)
-            )
+        // Persist cab blocks
+        state.cabBlocks.forEach { block ->
+            block.controls.forEachIndexed { idx, control ->
+                controlRepository.insert(
+                    controlRepository.toEntity(control, SectionType.CAB, block.id, idx)
+                )
+            }
         }
 
         // Persist effect blocks
@@ -485,13 +485,25 @@ class BoardViewModel @Inject constructor(
                 )
             }
 
-            // Amp
+            // Amp — group by blockId to support multiple amp blocks
             val ampEntities = bySection[SectionType.AMP.name] ?: emptyList()
-            val ampControls = ampEntities.sortedBy { it.sortOrder }.map { controlRepository.toDomain(it) }
+            val ampBlocks = ampEntities.groupBy { it.blockId }.map { (blockId, entities) ->
+                AmpBlock(
+                    id = blockId,
+                    name = "Amplifier",
+                    controls = entities.sortedBy { it.sortOrder }.map { controlRepository.toDomain(it) }
+                )
+            }
 
-            // Cab
+            // Cab — group by blockId to support multiple cab blocks
             val cabEntities = bySection[SectionType.CAB.name] ?: emptyList()
-            val cabControls = cabEntities.sortedBy { it.sortOrder }.map { controlRepository.toDomain(it) }
+            val cabBlocks = cabEntities.groupBy { it.blockId }.map { (blockId, entities) ->
+                CabBlock(
+                    id = blockId,
+                    name = "Cabinet",
+                    controls = entities.sortedBy { it.sortOrder }.map { controlRepository.toDomain(it) }
+                )
+            }
 
             // Effects: group by blockId
             val effectEntities = bySection[SectionType.EFFECTS.name] ?: emptyList()
@@ -505,8 +517,8 @@ class BoardViewModel @Inject constructor(
 
             val state = BoardState(
                 pedals = pedalBlocks,
-                amp = AmpSettings(controls = ampControls),
-                cabinet = CabinetSettings(controls = cabControls),
+                ampBlocks = ampBlocks,
+                cabBlocks = cabBlocks,
                 effects = effectBlocks
             )
             boardRepository.loadBoardState(state)
@@ -525,11 +537,11 @@ class BoardViewModel @Inject constructor(
 
     fun switchAmpAbSlot(slot: AbSlot) {
         boardRepository.switchAmpAbSlot(slot)
-        boardRepository.boardState.value.amp.controls.forEach { sendControlMidi(it) }
+        boardRepository.boardState.value.ampBlocks.firstOrNull()?.controls?.forEach { sendControlMidi(it) }
     }
 
     fun switchCabAbSlot(slot: AbSlot) {
         boardRepository.switchCabAbSlot(slot)
-        boardRepository.boardState.value.cabinet.controls.forEach { sendControlMidi(it) }
+        boardRepository.boardState.value.cabBlocks.firstOrNull()?.controls?.forEach { sendControlMidi(it) }
     }
 }

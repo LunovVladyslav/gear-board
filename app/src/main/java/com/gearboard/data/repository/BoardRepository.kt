@@ -1,9 +1,9 @@
 package com.gearboard.data.repository
 
 import com.gearboard.domain.model.AbSlot
-import com.gearboard.domain.model.AmpSettings
+import com.gearboard.domain.model.AmpBlock
 import com.gearboard.domain.model.BoardState
-import com.gearboard.domain.model.CabinetSettings
+import com.gearboard.domain.model.CabBlock
 import com.gearboard.domain.model.ControlBlock
 import com.gearboard.domain.model.ControlType
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,76 +52,138 @@ class BoardRepository @Inject constructor() {
         )
     }
 
-    // --- Amp ---
+    // --- Amp blocks ---
 
-    fun updateAmp(amp: AmpSettings) {
-        _boardState.value = _boardState.value.copy(amp = amp)
+    fun addAmpBlock(block: AmpBlock) {
+        _boardState.value = _boardState.value.copy(
+            ampBlocks = _boardState.value.ampBlocks + block
+        )
     }
 
-    fun addAmpControl(control: ControlType) {
-        val amp = _boardState.value.amp
+    fun removeAmpBlock(blockId: String) {
         _boardState.value = _boardState.value.copy(
-            amp = amp.copy(controls = amp.controls + control)
+            ampBlocks = _boardState.value.ampBlocks.filter { it.id != blockId }
         )
+    }
+
+    fun updateAmpBlock(block: AmpBlock) {
+        _boardState.value = _boardState.value.copy(
+            ampBlocks = _boardState.value.ampBlocks.map {
+                if (it.id == block.id) block else it
+            }
+        )
+    }
+
+    fun renameAmpBlock(blockId: String, newName: String) {
+        _boardState.value = _boardState.value.copy(
+            ampBlocks = _boardState.value.ampBlocks.map {
+                if (it.id == blockId) it.copy(name = newName) else it
+            }
+        )
+    }
+
+    // Legacy single-block helpers — operate on first amp block, creating one if needed.
+
+    fun addAmpControl(control: ControlType) {
+        val blocks = _boardState.value.ampBlocks
+        if (blocks.isEmpty()) {
+            _boardState.value = _boardState.value.copy(
+                ampBlocks = listOf(AmpBlock(id = "amp_main", name = "Amplifier", controls = listOf(control)))
+            )
+        } else {
+            val updated = blocks[0].copy(controls = blocks[0].controls + control)
+            _boardState.value = _boardState.value.copy(ampBlocks = listOf(updated) + blocks.drop(1))
+        }
     }
 
     fun removeAmpControl(controlId: String) {
-        val amp = _boardState.value.amp
-        _boardState.value = _boardState.value.copy(
-            amp = amp.copy(controls = amp.controls.filter { it.id != controlId })
-        )
+        val blocks = _boardState.value.ampBlocks
+        if (blocks.isEmpty()) return
+        val updated = blocks[0].copy(controls = blocks[0].controls.filter { it.id != controlId })
+        _boardState.value = _boardState.value.copy(ampBlocks = listOf(updated) + blocks.drop(1))
     }
 
     fun updateAmpControl(controlId: String, updatedControl: ControlType) {
-        val amp = _boardState.value.amp
-        _boardState.value = _boardState.value.copy(
-            amp = amp.copy(controls = amp.controls.map {
-                if (it.id == controlId) updatedControl else it
-            })
-        )
+        val blocks = _boardState.value.ampBlocks
+        if (blocks.isEmpty()) return
+        val updated = blocks[0].copy(controls = blocks[0].controls.map {
+            if (it.id == controlId) updatedControl else it
+        })
+        _boardState.value = _boardState.value.copy(ampBlocks = listOf(updated) + blocks.drop(1))
     }
 
     fun clearAmpControls() {
-        val amp = _boardState.value.amp
+        val blocks = _boardState.value.ampBlocks
+        if (blocks.isEmpty()) return
+        val updated = blocks[0].copy(controls = emptyList())
+        _boardState.value = _boardState.value.copy(ampBlocks = listOf(updated) + blocks.drop(1))
+    }
+
+    // --- Cab blocks ---
+
+    fun addCabBlock(block: CabBlock) {
         _boardState.value = _boardState.value.copy(
-            amp = amp.copy(controls = emptyList())
+            cabBlocks = _boardState.value.cabBlocks + block
         )
     }
 
-    // --- Cabinet ---
-
-    fun updateCabinet(cabinet: CabinetSettings) {
-        _boardState.value = _boardState.value.copy(cabinet = cabinet)
+    fun removeCabBlock(blockId: String) {
+        _boardState.value = _boardState.value.copy(
+            cabBlocks = _boardState.value.cabBlocks.filter { it.id != blockId }
+        )
     }
+
+    fun updateCabBlock(block: CabBlock) {
+        _boardState.value = _boardState.value.copy(
+            cabBlocks = _boardState.value.cabBlocks.map {
+                if (it.id == block.id) block else it
+            }
+        )
+    }
+
+    fun renameCabBlock(blockId: String, newName: String) {
+        _boardState.value = _boardState.value.copy(
+            cabBlocks = _boardState.value.cabBlocks.map {
+                if (it.id == blockId) it.copy(name = newName) else it
+            }
+        )
+    }
+
+    // Legacy single-block helpers — operate on first cab block, creating one if needed.
 
     fun addCabControl(control: ControlType) {
-        val cab = _boardState.value.cabinet
-        _boardState.value = _boardState.value.copy(
-            cabinet = cab.copy(controls = cab.controls + control)
-        )
+        val blocks = _boardState.value.cabBlocks
+        if (blocks.isEmpty()) {
+            _boardState.value = _boardState.value.copy(
+                cabBlocks = listOf(CabBlock(id = "cab_main", name = "Cabinet", controls = listOf(control)))
+            )
+        } else {
+            val updated = blocks[0].copy(controls = blocks[0].controls + control)
+            _boardState.value = _boardState.value.copy(cabBlocks = listOf(updated) + blocks.drop(1))
+        }
     }
 
     fun removeCabControl(controlId: String) {
-        val cab = _boardState.value.cabinet
-        _boardState.value = _boardState.value.copy(
-            cabinet = cab.copy(controls = cab.controls.filter { it.id != controlId })
-        )
+        val blocks = _boardState.value.cabBlocks
+        if (blocks.isEmpty()) return
+        val updated = blocks[0].copy(controls = blocks[0].controls.filter { it.id != controlId })
+        _boardState.value = _boardState.value.copy(cabBlocks = listOf(updated) + blocks.drop(1))
     }
 
     fun updateCabControl(controlId: String, updatedControl: ControlType) {
-        val cab = _boardState.value.cabinet
-        _boardState.value = _boardState.value.copy(
-            cabinet = cab.copy(controls = cab.controls.map {
-                if (it.id == controlId) updatedControl else it
-            })
-        )
+        val blocks = _boardState.value.cabBlocks
+        if (blocks.isEmpty()) return
+        val updated = blocks[0].copy(controls = blocks[0].controls.map {
+            if (it.id == controlId) updatedControl else it
+        })
+        _boardState.value = _boardState.value.copy(cabBlocks = listOf(updated) + blocks.drop(1))
     }
 
     fun clearCabControls() {
-        val cab = _boardState.value.cabinet
-        _boardState.value = _boardState.value.copy(
-            cabinet = cab.copy(controls = emptyList())
-        )
+        val blocks = _boardState.value.cabBlocks
+        if (blocks.isEmpty()) return
+        val updated = blocks[0].copy(controls = emptyList())
+        _boardState.value = _boardState.value.copy(cabBlocks = listOf(updated) + blocks.drop(1))
     }
 
     // --- Effects (ControlBlock) ---
@@ -249,12 +311,9 @@ class BoardRepository @Inject constructor() {
         val block = blocks.find { it.id == blockId } ?: return
         if (block.abSlot == targetSlot) return
 
-        // Save current values
         val currentValues = captureControlValues(block.controls)
         val updatedStateA = if (block.abSlot == AbSlot.A) currentValues else block.stateA
         val updatedStateB = if (block.abSlot == AbSlot.B) currentValues else block.stateB
-
-        // Load target slot values
         val targetValues = if (targetSlot == AbSlot.A) updatedStateA else updatedStateB
         val newControls = applyControlValues(block.controls, targetValues)
 
@@ -276,36 +335,44 @@ class BoardRepository @Inject constructor() {
         }
     }
 
-    /** Switch A/B for amp. */
+    /** Switch A/B for the first amp block. */
     fun switchAmpAbSlot(targetSlot: AbSlot) {
-        val amp = _boardState.value.amp
-        if (amp.abSlot == targetSlot) return
+        val blocks = _boardState.value.ampBlocks
+        if (blocks.isEmpty()) return
+        val block = blocks[0]
+        if (block.currentSlot == targetSlot) return
 
-        val currentValues = captureControlValues(amp.controls)
-        val updatedStateA = if (amp.abSlot == AbSlot.A) currentValues else amp.stateA
-        val updatedStateB = if (amp.abSlot == AbSlot.B) currentValues else amp.stateB
-        val targetValues = if (targetSlot == AbSlot.A) updatedStateA else updatedStateB
-        val newControls = applyControlValues(amp.controls, targetValues)
+        val currentValues = captureControlValues(block.controls)
+        val updatedAbStates = block.abStates + mapOf(block.currentSlot to currentValues)
+        val targetValues = updatedAbStates[targetSlot] ?: emptyMap()
+        val newControls = applyControlValues(block.controls, targetValues)
 
-        _boardState.value = _boardState.value.copy(
-            amp = amp.copy(abSlot = targetSlot, controls = newControls, stateA = updatedStateA, stateB = updatedStateB)
+        val updatedBlock = block.copy(
+            currentSlot = targetSlot,
+            controls = newControls,
+            abStates = updatedAbStates
         )
+        _boardState.value = _boardState.value.copy(ampBlocks = listOf(updatedBlock) + blocks.drop(1))
     }
 
-    /** Switch A/B for cabinet. */
+    /** Switch A/B for the first cab block. */
     fun switchCabAbSlot(targetSlot: AbSlot) {
-        val cab = _boardState.value.cabinet
-        if (cab.abSlot == targetSlot) return
+        val blocks = _boardState.value.cabBlocks
+        if (blocks.isEmpty()) return
+        val block = blocks[0]
+        if (block.currentSlot == targetSlot) return
 
-        val currentValues = captureControlValues(cab.controls)
-        val updatedStateA = if (cab.abSlot == AbSlot.A) currentValues else cab.stateA
-        val updatedStateB = if (cab.abSlot == AbSlot.B) currentValues else cab.stateB
-        val targetValues = if (targetSlot == AbSlot.A) updatedStateA else updatedStateB
-        val newControls = applyControlValues(cab.controls, targetValues)
+        val currentValues = captureControlValues(block.controls)
+        val updatedAbStates = block.abStates + mapOf(block.currentSlot to currentValues)
+        val targetValues = updatedAbStates[targetSlot] ?: emptyMap()
+        val newControls = applyControlValues(block.controls, targetValues)
 
-        _boardState.value = _boardState.value.copy(
-            cabinet = cab.copy(abSlot = targetSlot, controls = newControls, stateA = updatedStateA, stateB = updatedStateB)
+        val updatedBlock = block.copy(
+            currentSlot = targetSlot,
+            controls = newControls,
+            abStates = updatedAbStates
         )
+        _boardState.value = _boardState.value.copy(cabBlocks = listOf(updatedBlock) + blocks.drop(1))
     }
 
     // --- A/B helpers ---

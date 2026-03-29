@@ -40,6 +40,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gearboard.domain.model.AbSlot
+import com.gearboard.domain.model.AmpBlock
+import com.gearboard.domain.model.BlockAppearance
+import com.gearboard.domain.model.BlockLayout
+import com.gearboard.domain.model.CabBlock
 import com.gearboard.domain.model.ControlType
 import com.gearboard.ui.components.AbToggle
 import com.gearboard.ui.components.SectionHeader
@@ -258,8 +262,8 @@ fun BoardScreen(
         item {
             SectionHeader(
                 title = "Amplifier",
-                enabled = boardState.amp.controls.hasAnyMapped(),
-                onToggleEnabled = { viewModel.toggleAmpEnabled() },
+                enabled = boardState.ampBlocks.flatMap { it.controls }.hasAnyMapped(),
+                onToggleEnabled = {},
                 expanded = ampExpanded,
                 onToggleExpanded = { viewModel.toggleAmpExpanded() },
                 modifier = Modifier.padding(horizontal = 8.dp)
@@ -271,12 +275,12 @@ fun BoardScreen(
                         horizontalArrangement = Arrangement.End
                     ) {
                         AbToggle(
-                            currentSlot = boardState.amp.abSlot,
+                            currentSlot = boardState.ampBlocks.firstOrNull()?.currentSlot ?: AbSlot.A,
                             onSlotSelected = { viewModel.switchAmpAbSlot(it) }
                         )
                     }
                     AmpSection(
-                    amp = boardState.amp,
+                    amp = boardState.ampBlocks.firstOrNull(),
                     onKnobValueChange = { knob, value ->
                         viewModel.onAmpKnobValueChange(knob.id, knob, value)
                     },
@@ -295,7 +299,7 @@ fun BoardScreen(
                     onEditControl = { control -> editAmpControl = control },
                     onAddControl = { showAddAmpControl = true },
                     onClearAll = { viewModel.clearAmpControls() },
-                    onCustomize = { customizeTarget = CustomizeTarget.Amp(boardState.amp) },
+                    onCustomize = { customizeTarget = CustomizeTarget.Amp(boardState.ampBlocks.firstOrNull()) },
                     onApplyAmpTemplate = { viewModel.applyAmpTemplate(it) },
                     onBadgeTap = { control ->
                         mappingControl = MappingControlState(control, section = "amp")
@@ -310,8 +314,8 @@ fun BoardScreen(
         item {
             SectionHeader(
                 title = "Cabinet",
-                enabled = boardState.cabinet.controls.hasAnyMapped(),
-                onToggleEnabled = { viewModel.toggleCabEnabled() },
+                enabled = boardState.cabBlocks.flatMap { it.controls }.hasAnyMapped(),
+                onToggleEnabled = {},
                 expanded = cabExpanded,
                 onToggleExpanded = { viewModel.toggleCabExpanded() },
                 modifier = Modifier.padding(horizontal = 8.dp)
@@ -323,12 +327,12 @@ fun BoardScreen(
                         horizontalArrangement = Arrangement.End
                     ) {
                         AbToggle(
-                            currentSlot = boardState.cabinet.abSlot,
+                            currentSlot = boardState.cabBlocks.firstOrNull()?.currentSlot ?: AbSlot.A,
                             onSlotSelected = { viewModel.switchCabAbSlot(it) }
                         )
                     }
                     CabSection(
-                    cabinet = boardState.cabinet,
+                    cab = boardState.cabBlocks.firstOrNull(),
                     onKnobValueChange = { knob, value ->
                         viewModel.onCabKnobValueChange(knob.id, knob, value)
                     },
@@ -347,7 +351,7 @@ fun BoardScreen(
                     onEditControl = { control -> editCabControl = control },
                     onAddControl = { showAddCabControl = true },
                     onClearAll = { viewModel.clearCabControls() },
-                    onCustomize = { customizeTarget = CustomizeTarget.Cab(boardState.cabinet) },
+                    onCustomize = { customizeTarget = CustomizeTarget.Cab(boardState.cabBlocks.firstOrNull()) },
                     onApplyCabTemplate = { viewModel.applyCabTemplate(it) },
                     onBadgeTap = { control ->
                         mappingControl = MappingControlState(control, section = "cab")
@@ -555,13 +559,13 @@ fun BoardScreen(
         }
         val app = when (target) {
             is CustomizeTarget.Block -> target.block.appearance
-            is CustomizeTarget.Amp -> target.settings.appearance
-            is CustomizeTarget.Cab -> target.settings.appearance
+            is CustomizeTarget.Amp -> target.block?.appearance ?: BlockAppearance()
+            is CustomizeTarget.Cab -> target.block?.appearance ?: BlockAppearance()
         }
         val lay = when (target) {
             is CustomizeTarget.Block -> target.block.layoutMode
-            is CustomizeTarget.Amp -> target.settings.layoutMode
-            is CustomizeTarget.Cab -> target.settings.layoutMode
+            is CustomizeTarget.Amp -> target.block?.layoutMode ?: BlockLayout.COMPACT
+            is CustomizeTarget.Cab -> target.block?.layoutMode ?: BlockLayout.COMPACT
         }
 
         CustomizeBlockDialog(
@@ -623,8 +627,8 @@ private data class RenameTarget(val isPedals: Boolean, val blockId: String, val 
 
 private sealed class CustomizeTarget {
     data class Block(val isPedals: Boolean, val block: com.gearboard.domain.model.ControlBlock) : CustomizeTarget()
-    data class Amp(val settings: com.gearboard.domain.model.AmpSettings) : CustomizeTarget()
-    data class Cab(val settings: com.gearboard.domain.model.CabinetSettings) : CustomizeTarget()
+    data class Amp(val block: AmpBlock?) : CustomizeTarget()
+    data class Cab(val block: CabBlock?) : CustomizeTarget()
 }
 
 private data class MappingControlState(

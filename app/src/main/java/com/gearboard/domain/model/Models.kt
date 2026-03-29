@@ -34,37 +34,33 @@ data class ControlBlock(
     val layoutMode: BlockLayout = BlockLayout.COMPACT
 )
 
-/** Amp section settings */
-data class AmpSettings(
-    val enabled: Boolean = true,
-    val model: String = "Clean",
-    val channel: String = "A",
+/** Amp block — mirrors ControlBlock for the Amplifier section. */
+data class AmpBlock(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val name: String,
     val controls: List<ControlType> = emptyList(),
-    val abSlot: AbSlot = AbSlot.A,
-    val stateA: Map<String, Float> = emptyMap(),
-    val stateB: Map<String, Float> = emptyMap(),
     val appearance: BlockAppearance = BlockAppearance(),
-    val layoutMode: BlockLayout = BlockLayout.COMPACT
+    val layoutMode: BlockLayout = BlockLayout.GRID,
+    val currentSlot: AbSlot = AbSlot.A,
+    val abStates: Map<AbSlot, Map<String, Float>> = emptyMap()
 )
 
-/** Cabinet settings */
-data class CabinetSettings(
-    val enabled: Boolean = true,
-    val model: String = "4x12",
-    val micPosition: String = "Center",
+/** Cabinet block — mirrors ControlBlock for the Cabinet section. */
+data class CabBlock(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val name: String,
     val controls: List<ControlType> = emptyList(),
-    val abSlot: AbSlot = AbSlot.A,
-    val stateA: Map<String, Float> = emptyMap(),
-    val stateB: Map<String, Float> = emptyMap(),
     val appearance: BlockAppearance = BlockAppearance(),
-    val layoutMode: BlockLayout = BlockLayout.COMPACT
+    val layoutMode: BlockLayout = BlockLayout.GRID,
+    val currentSlot: AbSlot = AbSlot.A,
+    val abStates: Map<AbSlot, Map<String, Float>> = emptyMap()
 )
 
 /** Complete board state (all sections) */
 data class BoardState(
     val pedals: List<ControlBlock> = emptyList(),
-    val amp: AmpSettings = AmpSettings(),
-    val cabinet: CabinetSettings = CabinetSettings(),
+    val ampBlocks: List<AmpBlock> = emptyList(),
+    val cabBlocks: List<CabBlock> = emptyList(),
     val effects: List<ControlBlock> = emptyList()
 )
 

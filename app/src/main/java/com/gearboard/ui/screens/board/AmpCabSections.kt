@@ -27,8 +27,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.gearboard.domain.model.AmpSettings
-import com.gearboard.domain.model.CabinetSettings
+import com.gearboard.domain.model.AmpBlock
+import com.gearboard.domain.model.BlockLayout
+import com.gearboard.domain.model.CabBlock
 import com.gearboard.domain.model.ControlType
 import com.gearboard.domain.model.FaderOrientation
 import com.gearboard.ui.theme.GearBoardColors
@@ -66,7 +67,7 @@ enum class CabTemplate {
  */
 @Composable
 fun AmpSection(
-    amp: AmpSettings,
+    amp: AmpBlock?,
     onKnobValueChange: (ControlType.Knob, Float) -> Unit,
     onToggle: (ControlType.Toggle) -> Unit,
     onTap: (ControlType.Tap) -> Unit,
@@ -91,7 +92,7 @@ fun AmpSection(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (amp.controls.isEmpty()) {
+        if (amp?.controls.isNullOrEmpty()) {
             // Empty state
             Text(
                 "No amp controls yet",
@@ -129,7 +130,7 @@ fun AmpSection(
             }
         } else {
             RenderControlList(
-                controls = amp.controls,
+                controls = amp!!.controls,
                 onKnobValueChange = onKnobValueChange,
                 onToggle = onToggle,
                 onTap = onTap,
@@ -141,7 +142,7 @@ fun AmpSection(
                 onPadUp = onPadUp,
                 onLongPress = onEditControl,
                 onBadgeTap = onBadgeTap,
-                enabled = amp.enabled,
+                enabled = true,
                 layoutMode = amp.layoutMode,
                 controlScale = controlScale,
                 modifier = Modifier.horizontalScroll(rememberScrollState())
@@ -220,7 +221,7 @@ fun AmpSection(
  */
 @Composable
 fun CabSection(
-    cabinet: CabinetSettings,
+    cab: CabBlock?,
     onKnobValueChange: (ControlType.Knob, Float) -> Unit,
     onToggle: (ControlType.Toggle) -> Unit,
     onTap: (ControlType.Tap) -> Unit,
@@ -245,7 +246,7 @@ fun CabSection(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (cabinet.controls.isEmpty()) {
+        if (cab?.controls.isNullOrEmpty()) {
             // Empty state
             Text(
                 "No cabinet controls yet",
@@ -283,7 +284,7 @@ fun CabSection(
             }
         } else {
             RenderControlList(
-                controls = cabinet.controls,
+                controls = cab!!.controls,
                 onKnobValueChange = onKnobValueChange,
                 onToggle = onToggle,
                 onTap = onTap,
@@ -295,8 +296,8 @@ fun CabSection(
                 onPadUp = onPadUp,
                 onLongPress = onEditControl,
                 onBadgeTap = onBadgeTap,
-                enabled = cabinet.enabled,
-                layoutMode = cabinet.layoutMode,
+                enabled = true,
+                layoutMode = cab.layoutMode,
                 controlScale = controlScale,
                 modifier = Modifier.horizontalScroll(rememberScrollState())
             )

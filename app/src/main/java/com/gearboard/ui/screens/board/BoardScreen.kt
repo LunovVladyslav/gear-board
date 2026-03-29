@@ -296,6 +296,7 @@ fun BoardScreen(
                     onAddControl = { showAddAmpControl = true },
                     onClearAll = { viewModel.clearAmpControls() },
                     onCustomize = { customizeTarget = CustomizeTarget.Amp(boardState.amp) },
+                    onApplyAmpTemplate = { viewModel.applyAmpTemplate(it) },
                     onBadgeTap = { control ->
                         mappingControl = MappingControlState(control, section = "amp")
                     },
@@ -347,6 +348,7 @@ fun BoardScreen(
                     onAddControl = { showAddCabControl = true },
                     onClearAll = { viewModel.clearCabControls() },
                     onCustomize = { customizeTarget = CustomizeTarget.Cab(boardState.cabinet) },
+                    onApplyCabTemplate = { viewModel.applyCabTemplate(it) },
                     onBadgeTap = { control ->
                         mappingControl = MappingControlState(control, section = "cab")
                     },

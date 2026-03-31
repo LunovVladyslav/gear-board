@@ -13,12 +13,19 @@ import com.gearboard.domain.model.MidiEvent
 import com.gearboard.domain.model.MidiEventType
 import com.gearboard.ui.components.ConnectionState
 import com.gearboard.ui.components.ConnectionType
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.job
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,7 +42,22 @@ class GearBoardMidiManager @Inject constructor(
 ) {
     companion object {
         private const val TAG = "GearBoardMidi"
+        private const val CC_THROTTLE_MS = 33L  // max ~30 msg/sec per CC
+        private const val MAX_RECONNECT_ATTEMPTS = 5
     }
+
+    // Rate limiting: last sent timestamp per CC number (0-127)
+    private val ccLastSentMs = LongArray(128) { 0L }
+
+    // Drop-last pending pattern: stores latest pending value+channel per CC
+    private val pendingCC = arrayOfNulls<Pair<Int, Int>>(128) // (value, channel)
+    private val pendingScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    // BLE reconnect tracking
+    private var reconnectAttempts = 0
+    private val _bleReconnectAttempts = MutableStateFlow(0)
+    val bleReconnectAttempts: StateFlow<Int> = _bleReconnectAttempts.asStateFlow()
+    private val managerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     // Connection state
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
@@ -90,6 +112,30 @@ class GearBoardMidiManager @Inject constructor(
         blePeripheral.onMidiDataReceived = { data ->
             parseMidiBytes(data, MidiDirection.INCOMING)
         }
+
+        // Auto-reconnect BLE peripheral on disconnect
+        managerScope.launch {
+            blePeripheral.state.collect { state ->
+                if (state is BleMidiPeripheral.PeripheralState.Idle &&
+                    _connectionState.value is ConnectionState.Connected &&
+                    (_connectionState.value as? ConnectionState.Connected)?.type == ConnectionType.BLUETOOTH
+                ) {
+                    // BLE host disconnected
+                    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                        reconnectAttempts++
+                        _bleReconnectAttempts.value = reconnectAttempts
+                        Log.d(TAG, "BLE disconnected, auto-reconnect attempt $reconnectAttempts/$MAX_RECONNECT_ATTEMPTS")
+                        blePeripheral.startAdvertising()
+                    } else {
+                        Log.w(TAG, "BLE max reconnect attempts reached")
+                        _connectionState.value = ConnectionState.Error("BLE connection lost")
+                    }
+                } else if (state is BleMidiPeripheral.PeripheralState.Connected) {
+                    reconnectAttempts = 0
+                    _bleReconnectAttempts.value = 0
+                }
+            }
+        }
     }
 
     /**
@@ -142,8 +188,12 @@ class GearBoardMidiManager @Inject constructor(
 
     /**
      * Disconnect from the current device.
+     * Cancels any pending throttled CC sends before closing ports to avoid
+     * sending stale values on the next connection.
      */
     fun disconnect() {
+        pendingScope.coroutineContext.job.children.forEach { it.cancel() }
+        pendingCC.fill(null)
         try {
             activeOutputPort?.disconnect(midiReceiver)
             activeInputPort?.close()
@@ -171,23 +221,66 @@ class GearBoardMidiManager @Inject constructor(
 
     /**
      * Send a Control Change message on a specific channel.
-     * @param ccNumber 0-127
+     *
+     * Uses a drop-last throttle: at most one message per CC is sent per [CC_THROTTLE_MS] window
+     * (~30 msg/sec). If a new value arrives while throttled, it replaces the pending value and
+     * fires after the window expires — ensuring the final position is always transmitted.
+     *
+     * CC 0 is guarded and never forwarded (reserved for bank select MSB in [sendPreset]).
+     *
+     * The message is sent via both paths simultaneously:
+     * - USB/BLE device input port ([activeInputPort])
+     * - BLE peripheral to a connected Mac/PC host ([blePeripheral]) when connected
+     *
+     * @param ccNumber 0-127 (0 is silently dropped)
      * @param value 0-127
      * @param channel 1-16 (MIDI channel)
      */
     fun sendControlChange(ccNumber: Int, value: Int, channel: Int) {
+        val cc = ccNumber.coerceIn(0, 127)
+        if (cc == 0) return // guard: never send CC 0 (bank select MSB)
+        val v = value.coerceIn(0, 127)
         val ch = (channel - 1).coerceIn(0, 15)
-        val statusByte = (0xB0 or ch).toByte()
-        val data = byteArrayOf(statusByte, ccNumber.toByte(), value.toByte())
-        Log.d(TAG, "sendCC: ch=$ch cc=$ccNumber val=$value")
 
-        sendMidiData(data)
+        val now = System.currentTimeMillis()
+        if (now - ccLastSentMs[cc] >= CC_THROTTLE_MS) {
+            ccLastSentMs[cc] = now
+            pendingCC[cc] = null
+            sendMidiCC(cc, v, ch)
+        } else {
+            pendingCC[cc] = Pair(v, ch)
+            pendingScope.launch {
+                delay(CC_THROTTLE_MS)
+                pendingCC[cc]?.let { (pv, pch) ->
+                    pendingCC[cc] = null
+                    ccLastSentMs[cc] = System.currentTimeMillis()
+                    sendMidiCC(cc, pv, pch)
+                }
+            }
+        }
+    }
 
+    private fun sendMidiCC(cc: Int, value: Int, channel: Int) {
+        val statusByte = (0xB0 or channel).toByte()
+        val data = byteArrayOf(statusByte, cc.toByte(), value.toByte())
+        Log.d(TAG, "sendCC: ch=$channel cc=$cc val=$value")
+        try {
+            activeInputPort?.send(data, 0, data.size)
+            val peripheralState = blePeripheral.state.value
+            if (peripheralState is BleMidiPeripheral.PeripheralState.Connected) {
+                blePeripheral.sendMidiData(data)
+            }
+        } catch (e: java.io.IOException) {
+            Log.w(TAG, "MIDI send failed on CC $cc: ${e.message}")
+            _connectionState.value = ConnectionState.Error("Send failed: ${e.message}")
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "MIDI port closed during send: ${e.message}")
+        }
         _midiEvents.tryEmit(
             MidiEvent(
                 type = MidiEventType.CONTROL_CHANGE,
-                channel = ch,
-                data1 = ccNumber,
+                channel = channel,
+                data1 = cc,
                 data2 = value,
                 direction = MidiDirection.OUTGOING,
                 rawBytes = data
@@ -213,7 +306,18 @@ class GearBoardMidiManager @Inject constructor(
         val statusByte = (0xC0 or ch).toByte()
         val data = byteArrayOf(statusByte, program.toByte())
 
-        sendMidiData(data)
+        try {
+            activeInputPort?.send(data, 0, data.size)
+            val peripheralState = blePeripheral.state.value
+            if (peripheralState is BleMidiPeripheral.PeripheralState.Connected) {
+                blePeripheral.sendMidiData(data)
+            }
+        } catch (e: java.io.IOException) {
+            Log.w(TAG, "MIDI send failed on PC $program: ${e.message}")
+            _connectionState.value = ConnectionState.Error("Send failed: ${e.message}")
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "MIDI port closed during send: ${e.message}")
+        }
 
         _midiEvents.tryEmit(
             MidiEvent(
@@ -239,7 +343,18 @@ class GearBoardMidiManager @Inject constructor(
         val data = byteArrayOf(statusByte, note.toByte(), velocity.toByte())
         Log.d(TAG, "sendNoteOn: ch=$ch note=$note vel=$velocity")
 
-        sendMidiData(data)
+        try {
+            activeInputPort?.send(data, 0, data.size)
+            val peripheralState = blePeripheral.state.value
+            if (peripheralState is BleMidiPeripheral.PeripheralState.Connected) {
+                blePeripheral.sendMidiData(data)
+            }
+        } catch (e: java.io.IOException) {
+            Log.w(TAG, "MIDI send failed on NoteOn $note: ${e.message}")
+            _connectionState.value = ConnectionState.Error("Send failed: ${e.message}")
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "MIDI port closed during send: ${e.message}")
+        }
 
         _midiEvents.tryEmit(
             MidiEvent(
@@ -262,13 +377,27 @@ class GearBoardMidiManager @Inject constructor(
         val bankMsb = (bank / 128).coerceIn(0, 127)
         val bankLsb = (bank % 128).coerceIn(0, 127)
         val prog = program.coerceIn(0, 127)
-        // Bank Select MSB (CC 0)
-        sendMidiData(byteArrayOf((0xB0 or ch).toByte(), 0x00, bankMsb.toByte()))
-        // Bank Select LSB (CC 32)
-        sendMidiData(byteArrayOf((0xB0 or ch).toByte(), 0x20, bankLsb.toByte()))
-        // Program Change
-        sendMidiData(byteArrayOf((0xC0 or ch).toByte(), prog.toByte()))
-        Log.d(TAG, "sendPreset: bank=$bank prog=$program ch=$ch")
+        try {
+            val msbData = byteArrayOf((0xB0 or ch).toByte(), 0x00, bankMsb.toByte())
+            val lsbData = byteArrayOf((0xB0 or ch).toByte(), 0x20, bankLsb.toByte())
+            val pcData = byteArrayOf((0xC0 or ch).toByte(), prog.toByte())
+            val peripheralConnected = blePeripheral.state.value is BleMidiPeripheral.PeripheralState.Connected
+            // Bank Select MSB (CC 0)
+            activeInputPort?.send(msbData, 0, msbData.size)
+            if (peripheralConnected) blePeripheral.sendMidiData(msbData)
+            // Bank Select LSB (CC 32)
+            activeInputPort?.send(lsbData, 0, lsbData.size)
+            if (peripheralConnected) blePeripheral.sendMidiData(lsbData)
+            // Program Change
+            activeInputPort?.send(pcData, 0, pcData.size)
+            if (peripheralConnected) blePeripheral.sendMidiData(pcData)
+            Log.d(TAG, "sendPreset: bank=$bank prog=$program ch=$ch")
+        } catch (e: java.io.IOException) {
+            Log.w(TAG, "MIDI send failed on sendPreset bank=$bank prog=$program: ${e.message}")
+            _connectionState.value = ConnectionState.Error("Send failed: ${e.message}")
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "MIDI port closed during sendPreset: ${e.message}")
+        }
     }
 
     /**
@@ -282,7 +411,18 @@ class GearBoardMidiManager @Inject constructor(
         val data = byteArrayOf(statusByte, note.toByte(), 0)
         Log.d(TAG, "sendNoteOff: ch=$ch note=$note")
 
-        sendMidiData(data)
+        try {
+            activeInputPort?.send(data, 0, data.size)
+            val peripheralState = blePeripheral.state.value
+            if (peripheralState is BleMidiPeripheral.PeripheralState.Connected) {
+                blePeripheral.sendMidiData(data)
+            }
+        } catch (e: java.io.IOException) {
+            Log.w(TAG, "MIDI send failed on NoteOff $note: ${e.message}")
+            _connectionState.value = ConnectionState.Error("Send failed: ${e.message}")
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "MIDI port closed during send: ${e.message}")
+        }
 
         _midiEvents.tryEmit(
             MidiEvent(
@@ -500,9 +640,29 @@ class GearBoardMidiManager @Inject constructor(
 
     /**
      * Cleanup — call when app is destroyed.
+     *
+     * Cancels all pending throttled CC jobs in [pendingScope] (drop-last queue),
+     * cancels the BLE reconnect/monitor scope [managerScope], unregisters the USB
+     * device hotplug callback, and closes any open MIDI ports via [disconnect].
      */
     fun cleanup() {
         disconnect()
+        pendingScope.cancel()
+        managerScope.cancel()
         midiManager.unregisterDeviceCallback(deviceCallback)
+    }
+
+    // --- Test helpers ---
+
+    /** Inject a mock [MidiInputPort] for unit tests. Not for production use. */
+    @androidx.annotation.VisibleForTesting
+    fun setInputPortForTest(port: android.media.midi.MidiInputPort) {
+        activeInputPort = port
+    }
+
+    /** Feed raw MIDI bytes into the receiver as if they arrived from a device. */
+    @androidx.annotation.VisibleForTesting
+    fun simulateIncomingBytes(data: ByteArray) {
+        midiReceiver.onSend(data, 0, data.size, System.currentTimeMillis())
     }
 }

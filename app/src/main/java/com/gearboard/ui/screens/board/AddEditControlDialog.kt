@@ -123,9 +123,9 @@ fun AddEditControlDialog(
     }
 
     // Toggle-specific
-    var pulseMode by remember {
+    var momentaryMode by remember {
         mutableStateOf(
-            (existingControl as? ControlType.Toggle)?.pulseMode ?: true
+            (existingControl as? ControlType.Toggle)?.momentaryMode ?: false
         )
     }
 
@@ -144,6 +144,29 @@ fun AddEditControlDialog(
         mutableStateOf(existingControl?.size ?: ControlSize.MEDIUM)
     }
 
+    // CC/Channel override flags — hidden by default, revealed by MANUAL toggle
+    var manualCc by remember {
+        mutableStateOf(when (existingControl) {
+            is ControlType.Knob -> existingControl.ccNumber > 0
+            is ControlType.Toggle -> existingControl.ccNumber > 0
+            is ControlType.Tap -> existingControl.ccNumber > 0
+            is ControlType.Selector -> existingControl.ccNumber > 0
+            is ControlType.Fader -> existingControl.ccNumber > 0
+            else -> false
+        })
+    }
+    var manualChannel by remember { mutableStateOf(isEditMode) }
+
+    // Selector: per-position CC values (copies knob mechanics with fixed values)
+    var manualCcValues by remember {
+        mutableStateOf((existingControl as? ControlType.Selector)?.ccValues != null)
+    }
+    var ccValuesText by remember {
+        mutableStateOf(
+            (existingControl as? ControlType.Selector)?.ccValues?.joinToString(", ") ?: ""
+        )
+    }
+
     // Validation
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val labelError = when {
@@ -151,9 +174,10 @@ fun AddEditControlDialog(
         label.length > 12 -> "Max 12 chars"
         else -> null
     }
-    val ccNum = ccNumber.toIntOrNull()
+    val ccNum = if (manualCc) ccNumber.toIntOrNull() else 0
     val ccError = when {
         selectedKind == ControlKind.PAD || selectedKind == ControlKind.PRESET_NAV -> null
+        !manualCc -> null
         ccNum == null -> "Required"
         ccNum !in 0..127 -> "0-127"
         else -> null
@@ -172,7 +196,17 @@ fun AddEditControlDialog(
         positions.size > 6 -> "Max 6"
         else -> null
     }
-    val isValid = labelError == null && ccError == null && noteError == null && posError == null
+    val parsedCcValues: List<Int?>? = if (selectedKind == ControlKind.SELECTOR && manualCcValues) {
+        ccValuesText.split(",").map { it.trim().toIntOrNull() }
+    } else null
+    val ccValuesError: String? = when {
+        parsedCcValues == null -> null
+        parsedCcValues.any { it == null } -> "Invalid number"
+        parsedCcValues.size != positions.size -> "Need ${positions.size} values"
+        parsedCcValues.any { (it ?: 0) !in 0..127 } -> "Values 0-127"
+        else -> null
+    }
+    val isValid = labelError == null && ccError == null && noteError == null && posError == null && ccValuesError == null
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = GearBoardColors.TextPrimary,
@@ -280,34 +314,72 @@ fun AddEditControlDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // CC Number (not for Pad, PresetNav)
+                // CC Number (not for Pad, PresetNav) — hidden until MANUAL is tapped
                 if (selectedKind != ControlKind.PAD && selectedKind != ControlKind.PRESET_NAV) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("CC NUMBER", color = GearBoardColors.TextSecondary, fontSize = 10.sp, letterSpacing = 1.5.sp)
+                        Text(
+                            text = if (manualCc) "MANUAL" else "AUTO",
+                            color = if (manualCc) GearBoardColors.TextOnAccent else GearBoardColors.TextPrimary,
+                            fontSize = 11.sp,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (manualCc) GearBoardColors.Accent else GearBoardColors.SurfaceElevated)
+                                .clickable { manualCc = !manualCc }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                    if (manualCc) {
+                        OutlinedTextField(
+                            value = ccNumber,
+                            onValueChange = { ccNumber = it.filter { c -> c.isDigit() }.take(3) },
+                            label = { Text("CC NUMBER (0-127)") },
+                            isError = ccError != null,
+                            supportingText = ccError?.let { { Text(it) } },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = textFieldColors,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                // Channel — hidden until MANUAL is tapped
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("MIDI CHANNEL", color = GearBoardColors.TextSecondary, fontSize = 10.sp, letterSpacing = 1.5.sp)
+                    Text(
+                        text = if (manualChannel) "MANUAL" else "AUTO",
+                        color = if (manualChannel) GearBoardColors.TextOnAccent else GearBoardColors.TextPrimary,
+                        fontSize = 11.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (manualChannel) GearBoardColors.Accent else GearBoardColors.SurfaceElevated)
+                            .clickable { manualChannel = !manualChannel }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+                if (manualChannel) {
                     OutlinedTextField(
-                        value = ccNumber,
-                        onValueChange = { ccNumber = it.filter { c -> c.isDigit() }.take(3) },
-                        label = { Text("CC NUMBER") },
-                        isError = ccError != null,
-                        supportingText = ccError?.let { { Text(it) } },
+                        value = midiChannel.toString(),
+                        onValueChange = {
+                            val ch = it.filter { c -> c.isDigit() }.take(2).toIntOrNull()
+                            if (ch != null && ch in 1..16) midiChannel = ch
+                        },
+                        label = { Text("CHANNEL (1-16)") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         colors = textFieldColors,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-
-                // Channel
-                OutlinedTextField(
-                    value = midiChannel.toString(),
-                    onValueChange = {
-                        val ch = it.filter { c -> c.isDigit() }.take(2).toIntOrNull()
-                        if (ch != null && ch in 1..16) midiChannel = ch
-                    },
-                    label = { Text("CHANNEL (1-16)") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = textFieldColors,
-                    modifier = Modifier.fillMaxWidth()
-                )
 
                 // Type-specific fields
                 when (selectedKind) {
@@ -322,6 +394,41 @@ fun AddEditControlDialog(
                             colors = textFieldColors,
                             modifier = Modifier.fillMaxWidth()
                         )
+                        // Per-position CC values (copies knob mechanics with fixed values)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("CC VALUES", color = GearBoardColors.TextSecondary, fontSize = 10.sp, letterSpacing = 1.5.sp)
+                            Text(
+                                text = if (manualCcValues) "CUSTOM" else "AUTO",
+                                color = if (manualCcValues) GearBoardColors.TextOnAccent else GearBoardColors.TextPrimary,
+                                fontSize = 11.sp,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (manualCcValues) GearBoardColors.Accent else GearBoardColors.SurfaceElevated)
+                                    .clickable { manualCcValues = !manualCcValues }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                        if (manualCcValues) {
+                            OutlinedTextField(
+                                value = ccValuesText,
+                                onValueChange = { ccValuesText = it },
+                                label = { Text("CC PER POSITION (comma, 0-127)") },
+                                isError = ccValuesError != null,
+                                supportingText = ccValuesError?.let { { Text(it) } },
+                                singleLine = true,
+                                colors = textFieldColors,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                "E.g. 4 amps: 10, 42, 85, 116",
+                                color = GearBoardColors.TextDisabled,
+                                fontSize = 11.sp
+                            )
+                        }
                     }
                     ControlKind.PAD -> {
                         OutlinedTextField(
@@ -369,8 +476,8 @@ fun AddEditControlDialog(
                             letterSpacing = 1.5.sp
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(true to "Pulse", false to "On/Off").forEach { (isPulse, txt) ->
-                                val isSel = pulseMode == isPulse
+                            listOf(true to "Momentary", false to "On/Off").forEach { (isMomentary, txt) ->
+                                val isSel = momentaryMode == isMomentary
                                 Text(
                                     text = txt,
                                     color = if (isSel) GearBoardColors.TextOnAccent else GearBoardColors.TextPrimary,
@@ -380,7 +487,7 @@ fun AddEditControlDialog(
                                         .background(
                                             if (isSel) GearBoardColors.Accent else GearBoardColors.SurfaceElevated
                                         )
-                                        .clickable { pulseMode = isPulse }
+                                        .clickable { momentaryMode = isMomentary }
                                         .padding(horizontal = 12.dp, vertical = 8.dp)
                                 )
                             }
@@ -453,7 +560,7 @@ fun AddEditControlDialog(
                         positions = positions,
                         noteNumber = noteNum ?: 36,
                         isHorizontal = isHorizontal,
-                        pulseMode = pulseMode,
+                        momentaryMode = momentaryMode,
                         displayFormat = displayFormat,
                         size = controlSize
                     )
@@ -509,7 +616,7 @@ private fun buildControl(
     positions: List<String>,
     noteNumber: Int,
     isHorizontal: Boolean,
-    pulseMode: Boolean,
+    momentaryMode: Boolean,
     displayFormat: DisplayFormat = DisplayFormat.ZERO_TO_TEN,
     size: ControlSize = ControlSize.MEDIUM
 ): ControlType {
@@ -520,7 +627,7 @@ private fun buildControl(
             displayFormat = displayFormat, size = size
         )
         ControlKind.TOGGLE -> ControlType.Toggle(
-            id = id, label = label, ccNumber = ccNumber, midiChannel = midiChannel, pulseMode = pulseMode, size = size
+            id = id, label = label, ccNumber = ccNumber, midiChannel = midiChannel, momentaryMode = momentaryMode, size = size
         )
         ControlKind.TAP -> ControlType.Tap(
             id = id, label = label, ccNumber = ccNumber, midiChannel = midiChannel, size = size

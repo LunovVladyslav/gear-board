@@ -155,12 +155,17 @@ private fun MappingCard(
     onLearn: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val isUnassigned = mapping.ccNumber == 0
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(GearBoardColors.Surface)
+            .background(
+                if (isUnassigned) GearBoardColors.Accent.copy(alpha = 0.05f)
+                else GearBoardColors.Surface
+            )
             .border(1.dp, GearBoardColors.BorderDefault, RoundedCornerShape(8.dp))
+            .clickable(enabled = isUnassigned, onClick = onLearn)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -179,22 +184,41 @@ private fun MappingCard(
             )
         }
 
-        // CC Number badge
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(GearBoardColors.Accent.copy(alpha = 0.15f))
-                .border(1.dp, GearBoardColors.Accent.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "CC ${mapping.ccNumber}",
-                color = GearBoardColors.Accent,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            )
+        // CC Number badge (amber "No CC" when ccNumber == 0)
+        if (isUnassigned) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(GearBoardColors.Accent.copy(alpha = 0.1f))
+                    .border(1.dp, GearBoardColors.Accent.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "No CC",
+                    color = GearBoardColors.Accent,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(GearBoardColors.Accent.copy(alpha = 0.15f))
+                    .border(1.dp, GearBoardColors.Accent.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "CC ${mapping.ccNumber}",
+                    color = GearBoardColors.Accent,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
         }
 
         Spacer(Modifier.width(8.dp))

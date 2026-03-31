@@ -5,15 +5,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -41,6 +46,7 @@ import com.gearboard.ui.theme.GearBoardColors
 fun MappingDialog(
     control: ControlType,
     onSave: (ccNumber: Int) -> Unit,
+    onLearn: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val controlLabel = control.label
@@ -102,8 +108,24 @@ fun MappingDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                if (onLearn != null) {
+                    Button(
+                        onClick = onLearn,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = GearBoardColors.SurfaceElevated,
+                            contentColor = GearBoardColors.Accent
+                        )
+                    ) {
+                        Icon(Icons.Default.Sensors, null, modifier = androidx.compose.ui.Modifier.size(16.dp))
+                        androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.size(8.dp))
+                        Text("MIDI LEARN", fontSize = 12.sp, letterSpacing = 1.sp)
+                    }
+                }
+
                 Text(
-                    "Tip: Use MIDI Learn in your plugin,\nthen enter the CC number here.",
+                    "Tip: Tap MIDI Learn, then move the control in your plugin.",
                     color = GearBoardColors.TextDisabled,
                     fontSize = 11.sp,
                     lineHeight = 16.sp

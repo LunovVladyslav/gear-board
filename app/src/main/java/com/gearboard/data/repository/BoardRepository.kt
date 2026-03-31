@@ -390,6 +390,28 @@ class BoardRepository @Inject constructor() {
 
     fun getCurrentState(): BoardState = _boardState.value
 
+    /**
+     * Find a control by ID across all sections.
+     * @param section one of "pedals", "amp", "cab", "effects"
+     */
+    fun findControl(controlId: String, blockId: String, section: String): ControlType? {
+        return when (section) {
+            "pedals"  -> _boardState.value.pedals
+                             .find { it.id == blockId }
+                             ?.controls?.find { it.id == controlId }
+            "amp"     -> _boardState.value.ampBlocks
+                             .find { it.id == blockId }
+                             ?.controls?.find { it.id == controlId }
+            "cab"     -> _boardState.value.cabBlocks
+                             .find { it.id == blockId }
+                             ?.controls?.find { it.id == controlId }
+            "effects" -> _boardState.value.effects
+                             .find { it.id == blockId }
+                             ?.controls?.find { it.id == controlId }
+            else      -> null
+        }
+    }
+
     // --- A/B switching ---
 
     /**

@@ -50,4 +50,10 @@ interface ControlItemDao {
 
     @Query("SELECT COUNT(*) FROM control_items")
     suspend fun count(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(items: List<ControlItemEntity>)
+
+    @Query("DELETE FROM control_items WHERE stableId NOT IN (:activeIds)")
+    suspend fun deleteOrphans(activeIds: List<String>)
 }

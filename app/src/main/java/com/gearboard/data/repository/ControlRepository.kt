@@ -6,6 +6,7 @@ import com.gearboard.domain.model.ControlType
 import com.gearboard.domain.model.ControlSize
 import com.gearboard.domain.model.DisplayFormat
 import com.gearboard.domain.model.FaderOrientation
+import com.gearboard.domain.model.PresetNavMode
 import com.gearboard.domain.model.SectionType
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -72,6 +73,12 @@ class ControlRepository @Inject constructor(
     /** Check if any controls exist. */
     suspend fun isEmpty(): Boolean = controlItemDao.count() == 0
 
+    /** Upsert (insert-or-replace) a list of control items by stableId. */
+    suspend fun upsertAll(items: List<ControlItemEntity>) = controlItemDao.upsertAll(items)
+
+    /** Delete all control items whose stableId is not in [activeIds]. */
+    suspend fun deleteOrphans(activeIds: List<String>) = controlItemDao.deleteOrphans(activeIds)
+
     // --- Domain ↔ Entity conversion ---
 
     /** Convert a domain [ControlType] to a Room entity. */
@@ -80,13 +87,16 @@ class ControlRepository @Inject constructor(
         sectionType: SectionType,
         blockId: String,
         sortOrder: Int,
-        entityId: Long = 0
+        entityId: Long = 0,
+        blockName: String = ""
     ): ControlItemEntity {
         val (typeName, ccNumber, midiChannel, extraConfig) = extractEntityFields(control)
         return ControlItemEntity(
             id = entityId,
+            stableId = control.id,
             sectionType = sectionType.name,
             blockId = blockId,
+            blockName = blockName,
             controlType = typeName,
             label = control.label,
             ccNumber = ccNumber,
@@ -103,34 +113,39 @@ class ControlRepository @Inject constructor(
                 val extra = parseExtra(entity.extraConfig)
                 val size = parseControlSize(extra["size"] as? String)
                 ControlType.Knob(
-                    id = entity.id.toString(),
+                    id = entity.stableId,
                     label = entity.label,
                     ccNumber = entity.ccNumber,
                     midiChannel = entity.midiChannel,
                     size = size,
                     defaultValue = (extra["defaultValue"] as? Double)?.toFloat() ?: 0.5f,
                     value = (extra["value"] as? Double)?.toFloat() ?: 0.5f,
-                    displayFormat = parseDisplayFormat(extra["displayFormat"] as? String)
+                    displayFormat = parseDisplayFormat(extra["displayFormat"] as? String),
+                    ccNumberA = (extra["ccNumberA"] as? Double)?.toInt() ?: entity.ccNumber,
+                    ccNumberB = (extra["ccNumberB"] as? Double)?.toInt() ?: entity.ccNumber
                 )
             }
             "TOGGLE" -> {
                 val extra = parseExtra(entity.extraConfig)
                 val size = parseControlSize(extra["size"] as? String)
                 ControlType.Toggle(
-                    id = entity.id.toString(),
+                    id = entity.stableId,
                     label = entity.label,
                     ccNumber = entity.ccNumber,
                     midiChannel = entity.midiChannel,
                     size = size,
-                    pulseMode = extra["pulseMode"] as? Boolean ?: true,
-                    isOn = extra["isOn"] as? Boolean ?: false
+                    momentaryMode = extra["momentaryMode"] as? Boolean ?: false,
+                    isOn = extra["isOn"] as? Boolean ?: false,
+                    isStompButton = extra["isStompButton"] as? Boolean ?: false,
+                    ccNumberA = (extra["ccNumberA"] as? Double)?.toInt() ?: entity.ccNumber,
+                    ccNumberB = (extra["ccNumberB"] as? Double)?.toInt() ?: entity.ccNumber
                 )
             }
             "TAP" -> {
                 val extra = parseExtra(entity.extraConfig)
                 val size = parseControlSize(extra["size"] as? String)
                 ControlType.Tap(
-                    id = entity.id.toString(),
+                    id = entity.stableId,
                     label = entity.label,
                     ccNumber = entity.ccNumber,
                     midiChannel = entity.midiChannel,
@@ -142,21 +157,24 @@ class ControlRepository @Inject constructor(
                 val size = parseControlSize(extra["size"] as? String)
                 @Suppress("UNCHECKED_CAST")
                 val positions = (extra["positions"] as? List<*>)?.map { it.toString() } ?: emptyList()
+                @Suppress("UNCHECKED_CAST")
+                val ccValues = (extra["ccValues"] as? List<*>)?.mapNotNull { (it as? Double)?.toInt() }
                 ControlType.Selector(
-                    id = entity.id.toString(),
+                    id = entity.stableId,
                     label = entity.label,
                     ccNumber = entity.ccNumber,
                     midiChannel = entity.midiChannel,
                     size = size,
                     positions = positions,
-                    selectedIndex = (extra["selectedIndex"] as? Double)?.toInt() ?: 0
+                    selectedIndex = (extra["selectedIndex"] as? Double)?.toInt() ?: 0,
+                    ccValues = ccValues
                 )
             }
             "FADER" -> {
                 val extra = parseExtra(entity.extraConfig)
                 val size = parseControlSize(extra["size"] as? String)
                 ControlType.Fader(
-                    id = entity.id.toString(),
+                    id = entity.stableId,
                     label = entity.label,
                     ccNumber = entity.ccNumber,
                     midiChannel = entity.midiChannel,
@@ -164,25 +182,32 @@ class ControlRepository @Inject constructor(
                     defaultValue = (extra["defaultValue"] as? Double)?.toFloat() ?: 0.5f,
                     value = (extra["value"] as? Double)?.toFloat() ?: 0.5f,
                     orientation = if (extra["orientation"] == "HORIZONTAL") FaderOrientation.HORIZONTAL else FaderOrientation.VERTICAL,
-                    displayFormat = parseDisplayFormat(extra["displayFormat"] as? String)
+                    displayFormat = parseDisplayFormat(extra["displayFormat"] as? String),
+                    ccNumberA = (extra["ccNumberA"] as? Double)?.toInt() ?: entity.ccNumber,
+                    ccNumberB = (extra["ccNumberB"] as? Double)?.toInt() ?: entity.ccNumber
                 )
             }
             "PRESET_NAV" -> {
                 val extra = parseExtra(entity.extraConfig)
                 val size = parseControlSize(extra["size"] as? String)
                 ControlType.PresetNav(
-                    id = entity.id.toString(),
+                    id = entity.stableId,
                     label = entity.label,
+                    ccNumber = entity.ccNumber,
                     midiChannel = entity.midiChannel,
                     size = size,
-                    currentPreset = (extra["currentPreset"] as? Double)?.toInt() ?: 0
+                    currentPreset = (extra["currentPreset"] as? Double)?.toInt() ?: 0,
+                    navMode = try {
+                        PresetNavMode.valueOf(extra["navMode"] as? String ?: "CC_INC_DEC")
+                    } catch (_: IllegalArgumentException) { PresetNavMode.CC_INC_DEC },
+                    pcChannel = (extra["pcChannel"] as? Double)?.toInt() ?: 1
                 )
             }
             "PAD" -> {
                 val extra = parseExtra(entity.extraConfig)
                 val size = parseControlSize(extra["size"] as? String)
                 ControlType.Pad(
-                    id = entity.id.toString(),
+                    id = entity.stableId,
                     label = entity.label,
                     noteNumber = (extra["noteNumber"] as? Double)?.toInt() ?: 0,
                     midiChannel = entity.midiChannel,
@@ -191,7 +216,7 @@ class ControlRepository @Inject constructor(
                 )
             }
             else -> ControlType.Knob(
-                id = entity.id.toString(),
+                id = entity.stableId,
                 label = entity.label,
                 ccNumber = entity.ccNumber,
                 midiChannel = entity.midiChannel
@@ -209,7 +234,9 @@ class ControlRepository @Inject constructor(
                     "size" to control.size.name,
                     "defaultValue" to control.defaultValue,
                     "value" to control.value,
-                    "displayFormat" to control.displayFormat.name
+                    "displayFormat" to control.displayFormat.name,
+                    "ccNumberA" to control.ccNumberA,
+                    "ccNumberB" to control.ccNumberB
                 ))
             )
             is ControlType.Toggle -> EntityFields(
@@ -218,8 +245,11 @@ class ControlRepository @Inject constructor(
                 midiChannel = control.midiChannel,
                 extraConfig = gson.toJson(mapOf(
                     "size" to control.size.name,
-                    "pulseMode" to control.pulseMode,
-                    "isOn" to control.isOn
+                    "momentaryMode" to control.momentaryMode,
+                    "isOn" to control.isOn,
+                    "isStompButton" to control.isStompButton,
+                    "ccNumberA" to control.ccNumberA,
+                    "ccNumberB" to control.ccNumberB
                 ))
             )
             is ControlType.Tap -> EntityFields(
@@ -237,7 +267,8 @@ class ControlRepository @Inject constructor(
                 extraConfig = gson.toJson(mapOf(
                     "size" to control.size.name,
                     "positions" to control.positions,
-                    "selectedIndex" to control.selectedIndex
+                    "selectedIndex" to control.selectedIndex,
+                    "ccValues" to control.ccValues
                 ))
             )
             is ControlType.Fader -> EntityFields(
@@ -249,16 +280,20 @@ class ControlRepository @Inject constructor(
                     "defaultValue" to control.defaultValue,
                     "value" to control.value,
                     "orientation" to control.orientation.name,
-                    "displayFormat" to control.displayFormat.name
+                    "displayFormat" to control.displayFormat.name,
+                    "ccNumberA" to control.ccNumberA,
+                    "ccNumberB" to control.ccNumberB
                 ))
             )
             is ControlType.PresetNav -> EntityFields(
                 typeName = "PRESET_NAV",
-                ccNumber = 0,
+                ccNumber = control.ccNumber,
                 midiChannel = control.midiChannel,
                 extraConfig = gson.toJson(mapOf(
                     "size" to control.size.name,
-                    "currentPreset" to control.currentPreset
+                    "currentPreset" to control.currentPreset,
+                    "navMode" to control.navMode.name,
+                    "pcChannel" to control.pcChannel
                 ))
             )
             is ControlType.Pad -> EntityFields(
@@ -277,8 +312,11 @@ class ControlRepository @Inject constructor(
     private fun parseExtra(json: String): Map<String, Any> {
         if (json.isBlank()) return emptyMap()
         return try {
-            val type = object : TypeToken<Map<String, Any>>() {}.type
-            gson.fromJson(json, type) ?: emptyMap()
+            val type = object : com.google.gson.reflect.TypeToken<Map<String, Any>>() {}.type
+            gson.fromJson<Map<String, Any>>(json, type) ?: emptyMap()
+        } catch (e: com.google.gson.JsonSyntaxException) {
+            android.util.Log.w("GearBoard", "Failed to parse extraConfig, using defaults: ${e.message}")
+            emptyMap()
         } catch (e: Exception) {
             emptyMap()
         }

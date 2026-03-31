@@ -1,5 +1,6 @@
 package com.gearboard.ui.screens.midimap
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gearboard.data.repository.MidiMappingRepository
@@ -7,7 +8,9 @@ import com.gearboard.domain.model.MidiDirection
 import com.gearboard.domain.model.MidiEvent
 import com.gearboard.domain.model.MidiEventType
 import com.gearboard.domain.model.MidiMapping
+import com.gearboard.domain.model.SectionType
 import com.gearboard.midi.GearBoardMidiManager
+import com.gearboard.midi.autoAssignCC
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -47,31 +50,84 @@ class MidiMapViewModel @Inject constructor(
 
     /**
      * Start MIDI Learn mode for a control.
-     * Listens for incoming CC messages for 10 seconds.
+     *
+     * 1. Auto-assigns a unique CC if the control has none (so Neural DSP can capture it).
+     * 2. Sends a wiggle on that CC immediately (Neural DSP detects GearBoard's CC number).
+     * 3. Listens for 10s for an incoming CC from a physical controller (optional override).
+     *
+     * @param section Used to group CC numbers by section (PEDALS 1-31, AMP 32-63, CAB 64-79, EFFECTS 80-110).
+     * @param isToggle True for Toggle controls — sends a sustained 127 wiggle so plugins don't miss it.
      */
-    fun startLearn(controlId: String, controlName: String) {
-        // Cancel any existing learn session
+    fun startLearn(
+        controlId: String,
+        controlName: String,
+        section: SectionType? = null,
+        isToggle: Boolean = false
+    ) {
         cancelLearn()
 
-        _learnState.value = LearnState(
-            isActive = true,
-            controlId = controlId,
-            controlName = controlName,
-            remainingSeconds = 10
-        )
-
-        // Countdown timer
+        // learnJob handles setup, wiggle, and countdown
         learnJob = viewModelScope.launch {
+            // Look up any existing mapping for this control
+            val existing = mappingRepository.getMappingByControlId(controlId)
+            val existingCc = existing?.ccNumber ?: 0
+            val existingChannel = existing?.channel ?: 0
+
+            // Auto-assign a unique CC if none is assigned yet
+            val learnCc = if (existingCc > 0) {
+                existingCc
+            } else {
+                val usedCCs = mappings.value.map { it.ccNumber }.filter { it > 0 }.toSet()
+                autoAssignCC(section, usedCCs)
+            }
+
+            Log.d("MIDI_LEARN", "Starting learn for '$controlName' on CC $learnCc")
+
+            // Persist the assigned CC immediately — Neural DSP can now capture it
+            val mapping = MidiMapping(
+                controlId = controlId,
+                controlName = controlName,
+                ccNumber = learnCc,
+                channel = existingChannel
+            )
+            if (existing != null) {
+                mappingRepository.saveMapping(mapping.copy(id = existing.id))
+            } else {
+                mappingRepository.saveMapping(mapping)
+            }
+
+            // Send wiggle on the assigned CC so Neural DSP Learn mode detects it
+            val midiCh = existingChannel + 1  // stored 0-15 → send 1-16
+            if (isToggle) {
+                // Hold 127 for 200ms so plugin doesn't miss the edge
+                midiManager.sendControlChange(learnCc, 127, midiCh)
+                delay(200)
+                midiManager.sendControlChange(learnCc, 0, midiCh)
+            } else {
+                // Standard mid-range wiggle for knobs/faders
+                midiManager.sendControlChange(learnCc, 64, midiCh)
+                delay(50)
+                midiManager.sendControlChange(learnCc, 0, midiCh)
+            }
+
+            _learnState.value = LearnState(
+                isActive = true,
+                controlId = controlId,
+                controlName = controlName,
+                remainingSeconds = 10
+            )
+
+            // Countdown
             for (i in 10 downTo 1) {
                 _learnState.value = _learnState.value.copy(remainingSeconds = i)
                 delay(1000)
             }
-            // Timeout — no CC detected
+            // Timeout — auto-assigned CC remains; no physical override received
             _learnState.value = LearnState()
             _toastMessage.value = "Learn timed out"
         }
 
-        // Listen for incoming CC events
+        // listenJob watches for an incoming CC from a physical controller (optional override)
         listenJob = viewModelScope.launch {
             midiManager.midiEvents.collect { event ->
                 if (_learnState.value.isActive &&
@@ -81,7 +137,7 @@ class MidiMapViewModel @Inject constructor(
                     val ccNumber = event.data1
                     _learnState.value = _learnState.value.copy(detectedCc = ccNumber)
 
-                    // Auto-assign after brief delay for UI feedback
+                    // Brief pause for UI feedback, then override with the physical CC
                     delay(500)
                     assignMapping(controlId, controlName, ccNumber, event.channel)
                     cancelLearn()
@@ -89,6 +145,8 @@ class MidiMapViewModel @Inject constructor(
             }
         }
     }
+
+    // autoAssignCC is a top-level function in MidiCcAssigner.kt (testable independently)
 
     /**
      * Cancel learn mode.

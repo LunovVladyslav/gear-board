@@ -77,6 +77,13 @@ fun PedalCard(
     var showMenu by remember { mutableStateOf(false) }
     val accentColor = androidx.compose.ui.graphics.Color(block.appearance.accentColor)
 
+    // Intercept toggle: stomp buttons also drive block.enabled so MIDI-mapped
+    // stomp controls stay in sync with the block on/off state.
+    val handleToggle: (ControlType.Toggle) -> Unit = { toggle ->
+        if (toggle.isStompButton) onToggleEnabled()
+        onToggle(toggle)
+    }
+
     // Hide UUID if persistence accidentally sets name = id
     val displayName = if (block.name == block.id || block.name.isBlank()) {
         block.type.uppercase()
@@ -200,11 +207,11 @@ fun PedalCard(
                 }
             }
 
-            // Controls
+            // Controls (stomp controls render full-width at bottom via RenderControlList)
             RenderControlList(
                 controls = block.controls,
                 onKnobValueChange = onKnobValueChange,
-                onToggle = onToggle,
+                onToggle = handleToggle,
                 onTap = onTap,
                 onSelectorChange = onSelectorChange,
                 onFaderValueChange = onFaderValueChange,
@@ -233,14 +240,18 @@ fun PedalCard(
                 )
             }
 
-            // Enable/disable stomp
-            Spacer(Modifier.height(4.dp))
-            GearToggle(
-                label = if (block.enabled) "ON" else "OFF",
-                enabled = block.enabled,
-                onToggle = onToggleEnabled,
-                variant = ToggleVariant.STOMP
-            )
+            // Fallback stomp: shown only for blocks that don't yet have a stomp control
+            // (e.g. blocks created before migration ran). New blocks get a stomp in controls.
+            val hasStompControl = block.controls.any { it is ControlType.Toggle && it.isStompButton }
+            if (!hasStompControl) {
+                Spacer(Modifier.height(4.dp))
+                GearToggle(
+                    label = if (block.enabled) "ON" else "OFF",
+                    enabled = block.enabled,
+                    onToggle = onToggleEnabled,
+                    variant = ToggleVariant.STOMP
+                )
+            }
         }
     }
 }

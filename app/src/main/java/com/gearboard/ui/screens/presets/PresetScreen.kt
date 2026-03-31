@@ -20,8 +20,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -56,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gearboard.domain.model.BoardPreset
 import com.gearboard.domain.model.Preset
 import com.gearboard.ui.components.GearBoardTopBar
 import com.gearboard.ui.theme.GearBoardColors
@@ -71,9 +75,35 @@ fun PresetScreen(
     val presets by viewModel.presets.collectAsStateWithLifecycle()
     val selectedPreset by viewModel.selectedPreset.collectAsStateWithLifecycle()
     val showSaveDialog by viewModel.showSaveDialog.collectAsStateWithLifecycle()
+    val showSaveBoardPresetDialog by viewModel.showSaveBoardPresetDialog.collectAsStateWithLifecycle()
     val toastMessage by viewModel.toastMessage.collectAsStateWithLifecycle()
+    val builtInPresets = viewModel.builtInPresets
+    val userPresets by viewModel.userPresets.collectAsStateWithLifecycle()
+    val isLoadingUserPresets by viewModel.isLoadingUserPresets.collectAsStateWithLifecycle()
+    val confirmPreset by viewModel.showApplyConfirmDialog.collectAsStateWithLifecycle()
+    val ccConflictDialogState by viewModel.showCcConflictDialog.collectAsStateWithLifecycle()
 
-    // SAF: export preset to JSON file
+    // SAF: export board preset to .gearboard file
+    var boardPresetToExport by remember { mutableStateOf<BoardPreset?>(null) }
+    val exportBoardLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        if (uri != null && boardPresetToExport != null) {
+            viewModel.exportBoardPreset(boardPresetToExport!!, uri)
+        }
+        boardPresetToExport = null
+    }
+
+    // SAF: import board preset from .gearboard file
+    val importBoardLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.importBoardPreset(uri)
+        }
+    }
+
+    // SAF: export old-style preset to JSON file
     var presetToExport by remember { mutableStateOf<Preset?>(null) }
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -90,7 +120,7 @@ fun PresetScreen(
         presetToExport = null
     }
 
-    // SAF: import preset from JSON file
+    // SAF: import old-style preset from JSON file
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -114,6 +144,82 @@ fun PresetScreen(
         }
     }
 
+    // Apply confirm dialog
+    if (confirmPreset != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissApplyConfirmDialog() },
+            containerColor = GearBoardColors.Surface,
+            titleContentColor = GearBoardColors.Accent,
+            textContentColor = GearBoardColors.TextPrimary,
+            title = { Text("APPLY PRESET", letterSpacing = 2.sp, fontSize = 16.sp) },
+            text = {
+                Text("Apply '${confirmPreset!!.name}' for ${confirmPreset!!.targetSoftware}? Your current board will be replaced.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.applyBoardPreset(confirmPreset!!) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GearBoardColors.Accent,
+                        contentColor = GearBoardColors.TextOnAccent
+                    )
+                ) { Text("APPLY") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissApplyConfirmDialog() }) {
+                    Text("CANCEL", color = GearBoardColors.TextSecondary)
+                }
+            }
+        )
+    }
+
+    // CC conflict dialog
+    if (ccConflictDialogState != null) {
+        val state = ccConflictDialogState!!
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissCcConflictDialog() },
+            containerColor = GearBoardColors.Surface,
+            titleContentColor = GearBoardColors.Accent,
+            textContentColor = GearBoardColors.TextPrimary,
+            title = { Text("CC CONFLICTS", letterSpacing = 2.sp, fontSize = 16.sp) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        "The following CC numbers are already in use:",
+                        color = GearBoardColors.TextSecondary,
+                        fontSize = 12.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    state.conflicts.forEach { conflict ->
+                        Text(
+                            "CC ${conflict.ccNumber}: '${conflict.existingLabel}' \u2194 '${conflict.incomingLabel}'",
+                            color = GearBoardColors.TextPrimary,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.importBoardPresetForceReassign(state.preset) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GearBoardColors.Accent,
+                        contentColor = GearBoardColors.TextOnAccent
+                    )
+                ) { Text("IMPORT ANYWAY (REASSIGN CCs)", fontSize = 11.sp) }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissCcConflictDialog() }) {
+                    Text("CANCEL", color = GearBoardColors.TextSecondary)
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             GearBoardTopBar(actions = {
@@ -134,12 +240,117 @@ fun PresetScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Preset count (first content item — large "PRESETS" title removed)
+        // --- BUILT-IN PRESETS section ---
         item {
             Text(
-                "${presets.size} preset${if (presets.size != 1) "s" else ""}",
+                "BUILT-IN PRESETS",
                 color = GearBoardColors.TextDisabled,
-                fontSize = 12.sp
+                fontSize = 11.sp,
+                letterSpacing = 2.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        items(builtInPresets, key = { "builtin_${it.id}" }) { preset ->
+            BuiltInPresetCard(
+                preset = preset,
+                onClick = { viewModel.showApplyConfirmDialog(preset) }
+            )
+        }
+
+        item { Spacer(Modifier.height(8.dp)) }
+
+        // --- MY BOARDS section ---
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "MY BOARDS",
+                    color = GearBoardColors.TextDisabled,
+                    fontSize = 11.sp,
+                    letterSpacing = 2.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Row {
+                    IconButton(
+                        onClick = { viewModel.showSaveBoardPresetDialog() },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Save, "Save board", tint = GearBoardColors.Accent, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(
+                        onClick = { importBoardLauncher.launch(arrayOf("*/*")) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Download, "Import board", tint = GearBoardColors.TextSecondary, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        }
+
+        when {
+            isLoadingUserPresets -> {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = GearBoardColors.Accent,
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                }
+            }
+            userPresets.isEmpty() -> {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.Save, null, tint = GearBoardColors.TextDisabled, modifier = Modifier.size(32.dp))
+                        Text("No saved boards", color = GearBoardColors.TextSecondary, fontSize = 13.sp)
+                        Text(
+                            "Tap the save icon above to snapshot your current board",
+                            color = GearBoardColors.TextDisabled,
+                            fontSize = 11.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+            else -> {
+                items(userPresets, key = { "user_${it.id}" }) { preset ->
+                    UserBoardPresetCard(
+                        preset = preset,
+                        onApply = { viewModel.showApplyConfirmDialog(preset) },
+                        onExport = {
+                            boardPresetToExport = preset
+                            exportBoardLauncher.launch("${preset.name}.gearboard")
+                        },
+                        onDelete = { viewModel.deleteBoardUserPreset(preset.id) }
+                    )
+                }
+            }
+        }
+
+        item { Spacer(Modifier.height(8.dp)) }
+
+        // --- LEGACY PRESETS section ---
+        item {
+            Text(
+                "QUICK PRESETS",
+                color = GearBoardColors.TextDisabled,
+                fontSize = 11.sp,
+                letterSpacing = 2.sp,
+                fontWeight = FontWeight.Bold
             )
         }
 
@@ -148,13 +359,13 @@ fun PresetScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 32.dp),
+                        .padding(vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.Save, null, tint = GearBoardColors.TextDisabled, modifier = Modifier.size(40.dp))
-                    Text("No presets saved yet", color = GearBoardColors.TextSecondary, fontSize = 14.sp)
-                    Text("Configure your board and save a preset", color = GearBoardColors.TextDisabled, fontSize = 12.sp, textAlign = TextAlign.Center)
+                    Icon(Icons.Default.Save, null, tint = GearBoardColors.TextDisabled, modifier = Modifier.size(32.dp))
+                    Text("No quick presets saved yet", color = GearBoardColors.TextSecondary, fontSize = 13.sp)
+                    Text("Configure your board and save a preset", color = GearBoardColors.TextDisabled, fontSize = 11.sp, textAlign = TextAlign.Center)
                 }
             }
         } else {
@@ -174,11 +385,19 @@ fun PresetScreen(
         }
     }
 
-    // Save dialog
+    // Save quick-preset dialog
     if (showSaveDialog) {
         SavePresetDialog(
             onSave = { name, bank, program -> viewModel.saveNewPreset(name, bank, program) },
             onDismiss = { viewModel.hideSaveDialog() }
+        )
+    }
+
+    // Save board preset dialog
+    if (showSaveBoardPresetDialog) {
+        SaveBoardPresetDialog(
+            onSave = { name -> viewModel.saveCurrentAsBoardPreset(name) },
+            onDismiss = { viewModel.dismissSaveBoardPresetDialog() }
         )
     }
     }
@@ -334,6 +553,143 @@ private fun SavePresetDialog(
             ) {
                 Text("SAVE")
             }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = GearBoardColors.TextSecondary)
+            }
+        }
+    )
+}
+
+@Composable
+private fun BuiltInPresetCard(
+    preset: BoardPreset,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(GearBoardColors.Surface)
+            .border(1.dp, GearBoardColors.BorderDefault, RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = preset.name,
+                color = GearBoardColors.TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = preset.targetSoftware,
+                color = GearBoardColors.Accent,
+                fontSize = 11.sp
+            )
+            if (preset.description.isNotBlank()) {
+                Text(
+                    text = preset.description,
+                    color = GearBoardColors.TextDisabled,
+                    fontSize = 11.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Icon(
+            Icons.Default.Download,
+            contentDescription = "Apply",
+            tint = GearBoardColors.TextSecondary,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
+private fun UserBoardPresetCard(
+    preset: BoardPreset,
+    onApply: () -> Unit,
+    onExport: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(GearBoardColors.Surface)
+            .border(1.dp, GearBoardColors.BorderDefault, RoundedCornerShape(8.dp))
+            .clickable(onClick = onApply)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = preset.name,
+                color = GearBoardColors.TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = preset.targetSoftware,
+                color = GearBoardColors.TextSecondary,
+                fontSize = 11.sp
+            )
+        }
+        Row {
+            IconButton(onClick = onExport, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Upload, "Export", tint = GearBoardColors.TextSecondary, modifier = Modifier.size(18.dp))
+            }
+            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Delete, "Delete", tint = GearBoardColors.DangerText, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaveBoardPresetDialog(
+    onSave: (name: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = GearBoardColors.Surface,
+        titleContentColor = GearBoardColors.Accent,
+        textContentColor = GearBoardColors.TextPrimary,
+        title = { Text("SAVE BOARD", letterSpacing = 2.sp, fontSize = 16.sp) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Board Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = GearBoardColors.Accent,
+                    unfocusedBorderColor = GearBoardColors.BorderDefault,
+                    focusedLabelColor = GearBoardColors.Accent,
+                    cursorColor = GearBoardColors.Accent
+                )
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (name.isNotBlank()) onSave(name.trim()) },
+                enabled = name.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = GearBoardColors.Accent,
+                    contentColor = GearBoardColors.TextOnAccent
+                )
+            ) { Text("SAVE") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {

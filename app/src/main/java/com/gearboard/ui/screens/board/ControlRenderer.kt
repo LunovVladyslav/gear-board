@@ -94,7 +94,7 @@ fun RenderControl(
                 selectedIndex = control.selectedIndex,
                 onPositionSelected = { onSelectorChange(control, it) },
                 onLongPress = { onLongPress(control) },
-                modifier = modifier
+                modifier = modifier.fillMaxWidth()
             )
         }
         is ControlType.Fader -> {
@@ -163,6 +163,10 @@ fun RenderControlList(
 ) {
     if (controls.isEmpty()) return
 
+    // Separate stomp buttons (full-width, below the grid) from regular inline controls
+    val stompControls = controls.filterIsInstance<ControlType.Toggle>().filter { it.isStompButton }
+    val regularControls = controls.filter { !(it is ControlType.Toggle && it.isStompButton) }
+
     val maxRows = when (layoutMode) {
         com.gearboard.domain.model.BlockLayout.GRID -> 3
         com.gearboard.domain.model.BlockLayout.ROW -> 1
@@ -176,111 +180,127 @@ fun RenderControlList(
 
     val finalScale = if (layoutMode == com.gearboard.domain.model.BlockLayout.COMPACT) controlScale * 0.8f else controlScale
 
-    if (onReorder != null) {
-        // Reorderable mode: 2D grid with long-press drag
-        ReorderableGrid(
-            items = controls,
-            onReorder = onReorder,
-            modifier = modifier,
-            maxRows = maxRows,
-            horizontalArrangement = Arrangement.spacedBy(horizontalSpacing, Alignment.CenterHorizontally),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) { _, control ->
-            RenderControl(
-                control = control,
-                onKnobValueChange = onKnobValueChange,
-                onToggle = onToggle,
-                onTap = onTap,
-                onSelectorChange = onSelectorChange,
-                onFaderValueChange = onFaderValueChange,
-                onPresetPrev = onPresetPrev,
-                onPresetNext = onPresetNext,
-                onPadDown = onPadDown,
-                onPadUp = onPadUp,
-                onLongPress = onLongPress,
-                onBadgeTap = onBadgeTap,
-                enabled = enabled,
-                controlScale = finalScale
-            )
+    Column(modifier = modifier) {
+        if (regularControls.isNotEmpty()) {
+            if (onReorder != null) {
+                // Reorderable mode: 2D grid with long-press drag (stomp excluded from reorder)
+                ReorderableGrid(
+                    items = regularControls,
+                    onReorder = onReorder,
+                    modifier = Modifier,
+                    maxRows = maxRows,
+                    horizontalArrangement = Arrangement.spacedBy(horizontalSpacing, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) { _, control ->
+                    RenderControl(
+                        control = control,
+                        onKnobValueChange = onKnobValueChange,
+                        onToggle = onToggle,
+                        onTap = onTap,
+                        onSelectorChange = onSelectorChange,
+                        onFaderValueChange = onFaderValueChange,
+                        onPresetPrev = onPresetPrev,
+                        onPresetNext = onPresetNext,
+                        onPadDown = onPadDown,
+                        onPadUp = onPadUp,
+                        onLongPress = onLongPress,
+                        onBadgeTap = onBadgeTap,
+                        enabled = enabled,
+                        controlScale = finalScale
+                    )
+                }
+            } else {
+                when (layoutMode) {
+                    com.gearboard.domain.model.BlockLayout.GRID -> {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 80.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
+                        ) {
+                            items(regularControls) { control ->
+                                RenderControl(
+                                    control = control,
+                                    onKnobValueChange = onKnobValueChange,
+                                    onToggle = onToggle,
+                                    onTap = onTap,
+                                    onSelectorChange = onSelectorChange,
+                                    onFaderValueChange = onFaderValueChange,
+                                    onPresetPrev = onPresetPrev,
+                                    onPresetNext = onPresetNext,
+                                    onPadDown = onPadDown,
+                                    onPadUp = onPadUp,
+                                    onLongPress = onLongPress,
+                                    enabled = enabled,
+                                    controlScale = finalScale
+                                )
+                            }
+                        }
+                    }
+                    com.gearboard.domain.model.BlockLayout.ROW -> {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
+                            modifier = Modifier
+                        ) {
+                            items(regularControls) { control ->
+                                RenderControl(
+                                    control = control,
+                                    onKnobValueChange = onKnobValueChange,
+                                    onToggle = onToggle,
+                                    onTap = onTap,
+                                    onSelectorChange = onSelectorChange,
+                                    onFaderValueChange = onFaderValueChange,
+                                    onPresetPrev = onPresetPrev,
+                                    onPresetNext = onPresetNext,
+                                    onPadDown = onPadDown,
+                                    onPadUp = onPadUp,
+                                    onLongPress = onLongPress,
+                                    enabled = enabled,
+                                    controlScale = finalScale
+                                )
+                            }
+                        }
+                    }
+                    com.gearboard.domain.model.BlockLayout.COMPACT -> {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp)
+                        ) {
+                            items(regularControls) { control ->
+                                RenderControl(
+                                    control = control,
+                                    onKnobValueChange = onKnobValueChange,
+                                    onToggle = onToggle,
+                                    onTap = onTap,
+                                    onSelectorChange = onSelectorChange,
+                                    onFaderValueChange = onFaderValueChange,
+                                    onPresetPrev = onPresetPrev,
+                                    onPresetNext = onPresetNext,
+                                    onPadDown = onPadDown,
+                                    onPadUp = onPadUp,
+                                    onLongPress = onLongPress,
+                                    enabled = enabled,
+                                    controlScale = finalScale
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
-    } else {
-        when (layoutMode) {
-            com.gearboard.domain.model.BlockLayout.GRID -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 80.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = modifier.fillMaxWidth().heightIn(max = 400.dp)
-                ) {
-                    items(controls) { control ->
-                        RenderControl(
-                            control = control,
-                            onKnobValueChange = onKnobValueChange,
-                            onToggle = onToggle,
-                            onTap = onTap,
-                            onSelectorChange = onSelectorChange,
-                            onFaderValueChange = onFaderValueChange,
-                            onPresetPrev = onPresetPrev,
-                            onPresetNext = onPresetNext,
-                            onPadDown = onPadDown,
-                            onPadUp = onPadUp,
-                            onLongPress = onLongPress,
-                            enabled = enabled,
-                            controlScale = finalScale
-                        )
-                    }
-                }
-            }
-            com.gearboard.domain.model.BlockLayout.ROW -> {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
-                    modifier = modifier
-                ) {
-                    items(controls) { control ->
-                        RenderControl(
-                            control = control,
-                            onKnobValueChange = onKnobValueChange,
-                            onToggle = onToggle,
-                            onTap = onTap,
-                            onSelectorChange = onSelectorChange,
-                            onFaderValueChange = onFaderValueChange,
-                            onPresetPrev = onPresetPrev,
-                            onPresetNext = onPresetNext,
-                            onPadDown = onPadDown,
-                            onPadUp = onPadUp,
-                            onLongPress = onLongPress,
-                            enabled = enabled,
-                            controlScale = finalScale
-                        )
-                    }
-                }
-            }
-            com.gearboard.domain.model.BlockLayout.COMPACT -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = modifier.fillMaxWidth().heightIn(max = 200.dp)
-                ) {
-                    items(controls) { control ->
-                        RenderControl(
-                            control = control,
-                            onKnobValueChange = onKnobValueChange,
-                            onToggle = onToggle,
-                            onTap = onTap,
-                            onSelectorChange = onSelectorChange,
-                            onFaderValueChange = onFaderValueChange,
-                            onPresetPrev = onPresetPrev,
-                            onPresetNext = onPresetNext,
-                            onPadDown = onPadDown,
-                            onPadUp = onPadUp,
-                            onLongPress = onLongPress,
-                            enabled = enabled,
-                            controlScale = finalScale
-                        )
-                    }
-                }
-            }
+
+        // Stomp buttons: always full-width, always at the bottom of the card
+        stompControls.forEach { stomp ->
+            GearToggle(
+                label = stomp.label,
+                enabled = stomp.isOn,
+                onToggle = { onToggle(stomp) },
+                variant = ToggleVariant.STOMP,
+                onLongPress = { onLongPress(stomp) },
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+            )
         }
     }
 }

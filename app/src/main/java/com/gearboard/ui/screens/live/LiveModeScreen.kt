@@ -624,8 +624,7 @@ private fun BarEditSheet(
                             .clip(RoundedCornerShape(4.dp))
                             .background(GearBoardColors.SurfaceVariant)
                             .clickable { showPresetDropdown = true }
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                            .weight(1f, fill = false),
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         val label = presets.firstOrNull { it.id == selectedPresetId }?.name ?: "None"

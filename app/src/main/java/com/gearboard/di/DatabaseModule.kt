@@ -28,7 +28,7 @@ object DatabaseModule {
             GearBoardDatabase::class.java,
             "gearboard_database"
         )
-            .fallbackToDestructiveMigration()
+            .addMigrations(GearBoardDatabase.MIGRATION_4_5)
             .build()
     }
 

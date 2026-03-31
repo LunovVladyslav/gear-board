@@ -51,33 +51,41 @@ enum class ConnectionType { USB, BLUETOOTH }
  *
  * Always visible. Shows:
  * - Disconnected: grey dot
+ * - Reconnecting (disconnected + bleReconnectAttempts > 0): pulsing amber dot + "Reconnecting… (n/5)"
  * - Scanning/Connecting: pulsing amber dot
  * - Connected USB: green dot + device name
  * - Connected BLE: blue dot + device name
  * - Error: red dot + error message
+ *
+ * @param bleReconnectAttempts number of BLE auto-reconnect attempts in progress (0 = none)
  */
 @Composable
 fun ConnectionStatusBar(
     state: ConnectionState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bleReconnectAttempts: Int = 0
 ) {
+    val isReconnecting = state is ConnectionState.Disconnected && bleReconnectAttempts > 0
+
     val dotColor by animateColorAsState(
-        targetValue = when (state) {
-            is ConnectionState.Disconnected -> GearBoardColors.OffIndicator
-            is ConnectionState.Scanning -> GearBoardColors.Accent
-            is ConnectionState.Connecting -> GearBoardColors.Accent
-            is ConnectionState.Connected -> when (state.type) {
+        targetValue = when {
+            isReconnecting -> GearBoardColors.Accent
+            state is ConnectionState.Disconnected -> GearBoardColors.OffIndicator
+            state is ConnectionState.Scanning -> GearBoardColors.Accent
+            state is ConnectionState.Connecting -> GearBoardColors.Accent
+            state is ConnectionState.Connected -> when (state.type) {
                 ConnectionType.USB -> GearBoardColors.ConnectedUsb
                 ConnectionType.BLUETOOTH -> GearBoardColors.ConnectedBle
             }
-            is ConnectionState.Error -> GearBoardColors.DangerText
+            state is ConnectionState.Error -> GearBoardColors.DangerText
+            else -> GearBoardColors.OffIndicator
         },
         animationSpec = tween(300),
         label = "dotColor"
     )
 
-    // Pulse animation for Scanning/Connecting states
-    val isPulsing = state is ConnectionState.Scanning || state is ConnectionState.Connecting
+    // Pulse animation for Scanning/Connecting/Reconnecting states
+    val isPulsing = isReconnecting || state is ConnectionState.Scanning || state is ConnectionState.Connecting
     val pulseAlpha = if (isPulsing) {
         val transition = rememberInfiniteTransition(label = "pulse")
         val alpha by transition.animateFloat(
@@ -94,12 +102,14 @@ fun ConnectionStatusBar(
         1f
     }
 
-    val statusText = when (state) {
-        is ConnectionState.Disconnected -> "Disconnected"
-        is ConnectionState.Scanning -> "Scanning..."
-        is ConnectionState.Connecting -> "Connecting to ${state.deviceName}..."
-        is ConnectionState.Connected -> state.deviceName
-        is ConnectionState.Error -> state.message
+    val statusText = when {
+        isReconnecting -> "Reconnecting... ($bleReconnectAttempts/5)"
+        state is ConnectionState.Disconnected -> "Disconnected"
+        state is ConnectionState.Scanning -> "Scanning..."
+        state is ConnectionState.Connecting -> "Connecting to ${state.deviceName}..."
+        state is ConnectionState.Connected -> state.deviceName
+        state is ConnectionState.Error -> state.message
+        else -> "Disconnected"
     }
 
     Row(
@@ -185,24 +195,29 @@ fun GearBoardTopBar(
 @Composable
 fun ConnectionDot(
     state: ConnectionState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bleReconnectAttempts: Int = 0
 ) {
+    val isReconnecting = state is ConnectionState.Disconnected && bleReconnectAttempts > 0
+
     val dotColor by animateColorAsState(
-        targetValue = when (state) {
-            is ConnectionState.Disconnected -> GearBoardColors.OffIndicator
-            is ConnectionState.Scanning -> GearBoardColors.Accent
-            is ConnectionState.Connecting -> GearBoardColors.Accent
-            is ConnectionState.Connected -> when (state.type) {
+        targetValue = when {
+            isReconnecting -> GearBoardColors.Accent
+            state is ConnectionState.Disconnected -> GearBoardColors.OffIndicator
+            state is ConnectionState.Scanning -> GearBoardColors.Accent
+            state is ConnectionState.Connecting -> GearBoardColors.Accent
+            state is ConnectionState.Connected -> when (state.type) {
                 ConnectionType.USB -> GearBoardColors.ConnectedUsb
                 ConnectionType.BLUETOOTH -> GearBoardColors.ConnectedBle
             }
-            is ConnectionState.Error -> GearBoardColors.DangerText
+            state is ConnectionState.Error -> GearBoardColors.DangerText
+            else -> GearBoardColors.OffIndicator
         },
         animationSpec = tween(300),
         label = "dotColor"
     )
 
-    val isPulsing = state is ConnectionState.Scanning || state is ConnectionState.Connecting
+    val isPulsing = isReconnecting || state is ConnectionState.Scanning || state is ConnectionState.Connecting
     val pulseAlpha = if (isPulsing) {
         val transition = rememberInfiniteTransition(label = "pulse")
         val alpha by transition.animateFloat(

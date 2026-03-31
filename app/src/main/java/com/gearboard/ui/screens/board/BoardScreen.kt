@@ -20,13 +20,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +50,7 @@ import com.gearboard.domain.model.BlockAppearance
 import com.gearboard.domain.model.BlockLayout
 import com.gearboard.domain.model.CabBlock
 import com.gearboard.domain.model.ControlType
+import com.gearboard.domain.model.SectionType
 import com.gearboard.ui.components.AbToggle
 import com.gearboard.ui.components.SectionHeader
 import com.gearboard.ui.theme.GearBoardColors
@@ -58,6 +64,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import com.gearboard.ui.components.ConnectionDot
 import com.gearboard.ui.screens.connect.ConnectViewModel
+import com.gearboard.ui.screens.midimap.MidiMapViewModel
 import com.gearboard.ui.theme.GearBoardDimensions
 
 /**
@@ -74,6 +81,7 @@ import com.gearboard.ui.theme.GearBoardDimensions
 fun BoardScreen(
     viewModel: BoardViewModel = hiltViewModel(),
     connectViewModel: ConnectViewModel = hiltViewModel(),
+    midiMapViewModel: MidiMapViewModel = hiltViewModel(),
     onSettingsClick: () -> Unit = {}
 ) {
     val connectionState by connectViewModel.connectionState.collectAsStateWithLifecycle()
@@ -104,10 +112,23 @@ fun BoardScreen(
     var renameCabTarget by remember { mutableStateOf<RenameTarget?>(null) }
     val showAddAmpBlock by viewModel.showAddAmpBlockDialog.collectAsStateWithLifecycle()
     val showAddCabBlock by viewModel.showAddCabBlockDialog.collectAsStateWithLifecycle()
+    val canUndo by viewModel.canUndo.collectAsStateWithLifecycle()
+    val canRedo by viewModel.canRedo.collectAsStateWithLifecycle()
+    val learnState by midiMapViewModel.learnState.collectAsStateWithLifecycle()
+    val lastUndoDescription by viewModel.lastUndoDescription.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(lastUndoDescription) {
+        lastUndoDescription?.let { desc ->
+            snackbarHostState.showSnackbar(desc)
+            viewModel.clearUndoDescription()
+        }
+    }
 
     var showChannelMenu by remember { mutableStateOf(false) }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Surface(
                 color = GearBoardColors.Surface,
@@ -160,12 +181,38 @@ fun BoardScreen(
                             }
                         }
                     }
-                    // Right: connection dot + settings gear
+                    // Right: undo/redo + connection dot + settings gear
                     Row(
                         modifier = Modifier.weight(1f),
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val undoEnabled = canUndo && !learnState.isActive
+                        val redoEnabled = canRedo && !learnState.isActive
+                        IconButton(
+                            onClick = { viewModel.undo() },
+                            enabled = undoEnabled,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Undo,
+                                contentDescription = "Undo last action",
+                                tint = if (undoEnabled) GearBoardColors.TextSecondary else GearBoardColors.TextDisabled,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = { viewModel.redo() },
+                            enabled = redoEnabled,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Redo,
+                                contentDescription = "Redo last action",
+                                tint = if (redoEnabled) GearBoardColors.TextSecondary else GearBoardColors.TextDisabled,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                         ConnectionDot(state = connectionState)
                         Spacer(modifier = Modifier.width(4.dp))
                         IconButton(
@@ -675,8 +722,23 @@ fun BoardScreen(
 
     // Mapping dialog (from "!" badge tap)
     mappingControl?.let { state ->
+        val sectionType = when (state.section) {
+            "amp" -> SectionType.AMP
+            "cab" -> SectionType.CAB
+            "effects" -> SectionType.EFFECTS
+            else -> SectionType.PEDALS
+        }
         MappingDialog(
             control = state.control,
+            onLearn = {
+                midiMapViewModel.startLearn(
+                    controlId = state.control.id,
+                    controlName = state.control.label,
+                    section = sectionType,
+                    isToggle = state.control is ControlType.Toggle
+                )
+                mappingControl = null
+            },
             onSave = { ccNumber ->
                 val updated = updateControlCcNumber(state.control, ccNumber)
                 if (updated != null) {

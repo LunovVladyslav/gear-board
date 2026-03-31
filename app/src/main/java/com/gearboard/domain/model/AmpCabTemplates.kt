@@ -1,6 +1,6 @@
 package com.gearboard.domain.model
 
-import com.gearboard.domain.model.DisplayFormat.DECIBELS
+import com.gearboard.domain.model.DisplayFormat.DECIBELS_OUTPUT
 import com.gearboard.domain.model.DisplayFormat.PERCENTAGE
 import com.gearboard.domain.model.DisplayFormat.ZERO_TO_TEN
 import com.gearboard.domain.model.FaderOrientation.HORIZONTAL
@@ -113,7 +113,7 @@ object CabTemplates {
             ControlType.Selector(label = "Mic Type", ccNumber = 0, positions = listOf("SM57", "MD421", "R121")),
             ControlType.Fader(label = "Mic Position", ccNumber = 0, orientation = HORIZONTAL, displayFormat = PERCENTAGE),
             ControlType.Knob(label = "Distance", ccNumber = 0, displayFormat = ZERO_TO_TEN),
-            ControlType.Knob(label = "Level", ccNumber = 0, displayFormat = DECIBELS)
+            ControlType.Knob(label = "Level", ccNumber = 0, displayFormat = DECIBELS_OUTPUT)
         )
     )
 
@@ -123,7 +123,7 @@ object CabTemplates {
             ControlType.Selector(label = "Mic Type", ccNumber = 0, positions = listOf("SM57", "MD421", "R121", "U87")),
             ControlType.Fader(label = "Mic Position", ccNumber = 0, orientation = HORIZONTAL, displayFormat = PERCENTAGE),
             ControlType.Knob(label = "Distance", ccNumber = 0, displayFormat = ZERO_TO_TEN),
-            ControlType.Knob(label = "Level", ccNumber = 0, displayFormat = DECIBELS),
+            ControlType.Knob(label = "Level", ccNumber = 0, displayFormat = DECIBELS_OUTPUT),
             ControlType.Knob(label = "Room", ccNumber = 0, displayFormat = PERCENTAGE)
         )
     )
@@ -135,7 +135,7 @@ object CabTemplates {
             ControlType.Selector(label = "Mic Type", ccNumber = 0, positions = listOf("SM57", "MD421", "R121", "U87")),
             ControlType.Fader(label = "Mic Position", ccNumber = 0, orientation = HORIZONTAL, displayFormat = PERCENTAGE),
             ControlType.Knob(label = "Distance", ccNumber = 0, displayFormat = ZERO_TO_TEN),
-            ControlType.Knob(label = "Level", ccNumber = 0, displayFormat = DECIBELS),
+            ControlType.Knob(label = "Level", ccNumber = 0, displayFormat = DECIBELS_OUTPUT),
             ControlType.Knob(label = "Room", ccNumber = 0, displayFormat = PERCENTAGE),
             ControlType.Toggle(label = "Phase", ccNumber = 0)
         )
@@ -147,7 +147,7 @@ object CabTemplates {
             ControlType.Selector(label = "Mic Type", ccNumber = 0, positions = listOf("MD421", "D112", "SM7B")),
             ControlType.Fader(label = "Mic Position", ccNumber = 0, orientation = HORIZONTAL, displayFormat = PERCENTAGE),
             ControlType.Knob(label = "Distance", ccNumber = 0, displayFormat = ZERO_TO_TEN),
-            ControlType.Knob(label = "Level", ccNumber = 0, displayFormat = DECIBELS)
+            ControlType.Knob(label = "Level", ccNumber = 0, displayFormat = DECIBELS_OUTPUT)
         )
     )
 
@@ -157,7 +157,7 @@ object CabTemplates {
             ControlType.Selector(label = "Mic Type", ccNumber = 0, positions = listOf("MD421", "D112", "SM7B")),
             ControlType.Fader(label = "Mic Position", ccNumber = 0, orientation = HORIZONTAL, displayFormat = PERCENTAGE),
             ControlType.Knob(label = "Distance", ccNumber = 0, displayFormat = ZERO_TO_TEN),
-            ControlType.Knob(label = "Level", ccNumber = 0, displayFormat = DECIBELS),
+            ControlType.Knob(label = "Level", ccNumber = 0, displayFormat = DECIBELS_OUTPUT),
             ControlType.Toggle(label = "Tweeter", ccNumber = 0)
         )
     )
